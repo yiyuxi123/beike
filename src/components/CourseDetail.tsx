@@ -16,6 +16,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState(settings.timetableSlots?.[0]?.startTime || '08:00');
+  const [isSpecialTime, setIsSpecialTime] = useState(false);
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalCount = lessons.length;
@@ -49,6 +50,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
     setNewTitle('');
     setNewDate(new Date().toISOString().split('T')[0]);
     setNewTime(settings.timetableSlots?.[0]?.startTime || '08:00');
+    setIsSpecialTime(false);
   };
 
   return (
@@ -142,26 +144,48 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                  {settings.timetableSlots && settings.timetableSlots.length > 0 ? (
+                  {settings.timetableSlots && settings.timetableSlots.length > 0 && !isSpecialTime ? (
                     <select 
                       required
                       value={newTime}
-                      onChange={e => setNewTime(e.target.value)}
+                      onChange={e => {
+                        if (e.target.value === 'special') {
+                          setIsSpecialTime(true);
+                          setNewTime('12:00');
+                        } else {
+                          setNewTime(e.target.value);
+                        }
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">请选择时间段...</option>
                       {settings.timetableSlots.map(slot => (
                         <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
                       ))}
+                      <option value="special">特殊时间...</option>
                     </select>
                   ) : (
-                    <input 
-                      type="time" 
-                      required
-                      value={newTime}
-                      onChange={e => setNewTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="time" 
+                        required
+                        value={newTime}
+                        onChange={e => setNewTime(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {settings.timetableSlots && settings.timetableSlots.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSpecialTime(false);
+                            setNewTime(settings.timetableSlots?.[0]?.startTime || '08:00');
+                          }}
+                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                        >
+                          返回预设
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

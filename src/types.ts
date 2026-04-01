@@ -43,6 +43,7 @@ export type UserSettings = {
   reminderHours: number;
   defaultTasks: string[];
   archiveFolder?: string;
+  archiveDirectoryHandle?: any;
   timetableSlots?: TimetableSlot[];
   personalInfo?: {
     name: string;

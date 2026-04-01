@@ -89,10 +89,11 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
     try {
       if ('showDirectoryPicker' in window) {
         // @ts-ignore
-        const directoryHandle = await window.showDirectoryPicker();
+        const directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
         setLocalSettings({
           ...localSettings,
-          archiveFolder: directoryHandle.name
+          archiveFolder: directoryHandle.name,
+          archiveDirectoryHandle: directoryHandle
         });
       } else {
         const folderName = prompt('您的浏览器不支持直接选择文件夹，请手动输入归档文件夹名称：', localSettings.archiveFolder || '备课归档');

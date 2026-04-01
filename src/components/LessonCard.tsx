@@ -60,7 +60,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -83,9 +83,38 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
       attachments: [...lesson.attachments, ...newAttachments]
     });
 
-    if (settings.archiveFolder) {
+    if (settings.archiveDirectoryHandle) {
+      try {
+        // Request permission if needed
+        const options = { mode: 'readwrite' as const };
+        if ((await settings.archiveDirectoryHandle.queryPermission(options)) !== 'granted') {
+          await settings.archiveDirectoryHandle.requestPermission(options);
+        }
+
+        // Create directory structure: Term / Course / Lesson
+        const termHandle = await settings.archiveDirectoryHandle.getDirectoryHandle(course?.term || '未分类学期', { create: true });
+        const courseHandle = await termHandle.getDirectoryHandle(course?.name || '未分类课程', { create: true });
+        // Replace invalid characters in lesson title for folder name
+        const safeTitle = lesson.title.replace(/[\\/:*?"<>|]/g, '_');
+        const lessonHandle = await courseHandle.getDirectoryHandle(safeTitle, { create: true });
+
+        // Write files
+        for (const file of Array.from(files)) {
+          const fileHandle = await lessonHandle.getFileHandle((file as File).name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(file);
+          await writable.close();
+        }
+
+        const folderPath = `${settings.archiveFolder}/${course?.term || '未分类学期'}/${course?.name || '未分类课程'}/${safeTitle}`;
+        alert(`文件已成功写入本地文件夹:\n${folderPath}`);
+      } catch (error) {
+        console.error('Error writing file to local directory:', error);
+        alert(`文件写入失败，请检查浏览器权限。\n目标路径: ${settings.archiveFolder}/${course?.term || '未分类学期'}/${course?.name || '未分类课程'}/${lesson.title}`);
+      }
+    } else if (settings.archiveFolder) {
       const folderPath = `${settings.archiveFolder}/${course?.term || '未分类学期'}/${course?.name || '未分类课程'}/${lesson.title}`;
-      alert(`已自动归档至:\n${folderPath}`);
+      alert(`(模拟) 已自动归档至:\n${folderPath}\n\n提示：如需真实写入本地，请在设置中重新选择归档文件夹授权。`);
     }
 
     // Reset input

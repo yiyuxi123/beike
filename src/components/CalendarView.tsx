@@ -21,7 +21,8 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
   const [lessonFormData, setLessonFormData] = useState({
     courseId: '',
     title: '',
-    time: settings.timetableSlots?.[0]?.startTime || '08:00'
+    time: settings.timetableSlots?.[0]?.startTime || '08:00',
+    isSpecialTime: false
   });
 
   const year = currentDate.getFullYear();
@@ -46,7 +47,7 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
   const handleDayClick = (day: number) => {
     const date = new Date(year, month, day);
     setSelectedDate(date);
-    setLessonFormData({ courseId: '', title: '', time: settings.timetableSlots?.[0]?.startTime || '08:00' });
+    setLessonFormData({ courseId: '', title: '', time: settings.timetableSlots?.[0]?.startTime || '08:00', isSpecialTime: false });
     setIsAddModalOpen(true);
   };
 
@@ -54,10 +55,14 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
     e.stopPropagation();
     setSelectedLesson(lesson);
     const d = new Date(lesson.classTime);
+    const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    const isSpecial = settings.timetableSlots && settings.timetableSlots.length > 0 && !settings.timetableSlots.some(slot => slot.startTime === timeStr);
+    
     setLessonFormData({
       courseId: lesson.courseId,
       title: lesson.title,
-      time: `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+      time: timeStr,
+      isSpecialTime: !!isSpecial
     });
     setIsEditModalOpen(true);
   };
@@ -229,26 +234,44 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                {settings.timetableSlots && settings.timetableSlots.length > 0 ? (
+                {settings.timetableSlots && settings.timetableSlots.length > 0 && !lessonFormData.isSpecialTime ? (
                   <select 
                     required
                     value={lessonFormData.time}
-                    onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
+                    onChange={e => {
+                      if (e.target.value === 'special') {
+                        setLessonFormData({...lessonFormData, isSpecialTime: true, time: '12:00'});
+                      } else {
+                        setLessonFormData({...lessonFormData, time: e.target.value});
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">请选择时间段...</option>
                     {settings.timetableSlots.map(slot => (
                       <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
                     ))}
+                    <option value="special">特殊时间...</option>
                   </select>
                 ) : (
-                  <input 
-                    type="time" 
-                    required
-                    value={lessonFormData.time}
-                    onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input 
+                      type="time" 
+                      required
+                      value={lessonFormData.time}
+                      onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {settings.timetableSlots && settings.timetableSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: false, time: settings.timetableSlots?.[0]?.startTime || '08:00'})}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                      >
+                        返回预设
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="pt-4 flex justify-end gap-3">
@@ -308,26 +331,44 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                {settings.timetableSlots && settings.timetableSlots.length > 0 ? (
+                {settings.timetableSlots && settings.timetableSlots.length > 0 && !lessonFormData.isSpecialTime ? (
                   <select 
                     required
                     value={lessonFormData.time}
-                    onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
+                    onChange={e => {
+                      if (e.target.value === 'special') {
+                        setLessonFormData({...lessonFormData, isSpecialTime: true, time: '12:00'});
+                      } else {
+                        setLessonFormData({...lessonFormData, time: e.target.value});
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">请选择时间段...</option>
                     {settings.timetableSlots.map(slot => (
                       <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
                     ))}
+                    <option value="special">特殊时间...</option>
                   </select>
                 ) : (
-                  <input 
-                    type="time" 
-                    required
-                    value={lessonFormData.time}
-                    onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input 
+                      type="time" 
+                      required
+                      value={lessonFormData.time}
+                      onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {settings.timetableSlots && settings.timetableSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: false, time: settings.timetableSlots?.[0]?.startTime || '08:00'})}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                      >
+                        返回预设
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="pt-4 flex justify-end gap-3">
