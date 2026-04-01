@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
 import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { formatTimeUntil } from '../utils/dateUtils';
@@ -15,15 +15,37 @@ export default function Dashboard({ courses, lessons, settings }: DashboardProps
     return isUrgent && l.status !== 'completed';
   });
 
-  const completedCount = lessons.filter(l => l.status === 'completed').length;
+  const completedLessons = lessons.filter(l => l.status === 'completed');
+  const completedCount = completedLessons.length;
   const totalCount = lessons.length;
   const completionRate = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
+
+  const avgPrepTime = useMemo(() => {
+    if (completedCount === 0) return 0;
+    const totalPrepTime = completedLessons.reduce((acc, l) => acc + (l.prepTime || 0), 0);
+    return Math.round(totalPrepTime / completedCount);
+  }, [completedLessons, completedCount]);
+
+  const daysUsed = useMemo(() => {
+    if (lessons.length === 0) return 1;
+    const earliest = Math.min(...lessons.map(l => new Date(l.classTime).getTime()));
+    const now = new Date().getTime();
+    const diffDays = Math.floor((now - earliest) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  }, [lessons]);
+
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '早安';
+    if (hour < 18) return '下午好';
+    return '晚上好';
+  };
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">早安，王老师</h1>
-        <p className="text-gray-500 mt-1">今天是你使用备课印记的第 42 天，继续保持！</p>
+        <h1 className="text-2xl font-bold text-gray-900">{greeting()}，{settings.personalInfo?.name || '老师'}</h1>
+        <p className="text-gray-500 mt-1">今天是你使用备课印记的第 {daysUsed} 天，继续保持！</p>
       </header>
 
       {/* Stats Cards */}
@@ -33,7 +55,7 @@ export default function Dashboard({ courses, lessons, settings }: DashboardProps
             <CheckCircle2 className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">本周打勾率</p>
+            <p className="text-sm text-gray-500 font-medium">整体打勾率</p>
             <p className="text-2xl font-bold text-gray-900">{completionRate}%</p>
           </div>
         </div>
@@ -44,7 +66,7 @@ export default function Dashboard({ courses, lessons, settings }: DashboardProps
           </div>
           <div>
             <p className="text-sm text-gray-500 font-medium">平均备课时长</p>
-            <p className="text-2xl font-bold text-gray-900">35 <span className="text-base font-normal text-gray-500">分钟/课时</span></p>
+            <p className="text-2xl font-bold text-gray-900">{avgPrepTime} <span className="text-base font-normal text-gray-500">分钟/课时</span></p>
           </div>
         </div>
 

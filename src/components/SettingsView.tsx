@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Course, UserSettings } from '../types';
-import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen } from 'lucide-react';
+import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen, Clock } from 'lucide-react';
+import { TimetableSlot } from '../types';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -17,6 +18,10 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
   
   const [newCourse, setNewCourse] = useState<Partial<Course>>({
     name: '', subject: '', grade: '', term: ''
+  });
+  
+  const [newSlot, setNewSlot] = useState<Partial<TimetableSlot>>({
+    name: '', startTime: '08:00', endTime: '08:45'
   });
 
   const handleSave = () => {
@@ -57,6 +62,27 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
     if (window.confirm('确定要删除该课程吗？相关的课时记录可能无法正常显示。')) {
       setLocalCourses(localCourses.filter(c => c.id !== id));
     }
+  };
+
+  const addSlot = () => {
+    if (!newSlot.name || !newSlot.startTime || !newSlot.endTime) return;
+    const currentSlots = localSettings.timetableSlots || [];
+    setLocalSettings({
+      ...localSettings,
+      timetableSlots: [
+        ...currentSlots,
+        { ...newSlot, id: `ts_${Date.now()}` } as TimetableSlot
+      ].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    });
+    setNewSlot({ name: '', startTime: '08:00', endTime: '08:45' });
+  };
+
+  const removeSlot = (id: string) => {
+    const currentSlots = localSettings.timetableSlots || [];
+    setLocalSettings({
+      ...localSettings,
+      timetableSlots: currentSlots.filter(s => s.id !== id)
+    });
   };
 
   const handleSelectFolder = async () => {
@@ -217,6 +243,70 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
           </div>
         </div>
 
+        {/* Timetable Management */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              课节时间段设置
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">集中设置每天的课节时间，方便排课时快速选择</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3 mb-6">
+              {(localSettings.timetableSlots || []).map(slot => (
+                <div key={slot.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg group">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-900 w-20">{slot.name}</span>
+                    <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded border border-gray-200">
+                      {slot.startTime} - {slot.endTime}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => removeSlot(slot.id)}
+                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {(!localSettings.timetableSlots || localSettings.timetableSlots.length === 0) && (
+                <div className="text-sm text-gray-500 text-center py-4">暂无课节时间段，请添加</div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              <input 
+                type="text" 
+                placeholder="课节名称 (如: 第一节)"
+                value={newSlot.name}
+                onChange={e => setNewSlot({...newSlot, name: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="time" 
+                value={newSlot.startTime}
+                onChange={e => setNewSlot({...newSlot, startTime: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="time" 
+                value={newSlot.endTime}
+                onChange={e => setNewSlot({...newSlot, endTime: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button 
+                onClick={addSlot}
+                disabled={!newSlot.name || !newSlot.startTime || !newSlot.endTime}
+                className="col-span-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Basic Settings */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100 bg-gray-50/50">
@@ -275,6 +365,9 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                   自动归档文件夹
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">上传的课件和附件将自动归档至此文件夹</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  归档结构示例: <code className="bg-gray-100 px-1 rounded text-gray-500">{localSettings.archiveFolder || '备课归档'}/2023-2024上/三年级数学/第三单元：测量</code>
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">

@@ -31,11 +31,19 @@ export type Lesson = {
   prepTime: number; // minutes
 };
 
+export type TimetableSlot = {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+};
+
 export type UserSettings = {
   soundEnabled: boolean;
   reminderHours: number;
   defaultTasks: string[];
   archiveFolder?: string;
+  timetableSlots?: TimetableSlot[];
   personalInfo?: {
     name: string;
     title: string;

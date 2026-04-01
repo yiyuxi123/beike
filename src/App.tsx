@@ -27,7 +27,15 @@ export default function App() {
       name: '张老师',
       title: '高级数学教师',
       school: '第一实验小学'
-    }
+    },
+    timetableSlots: [
+      { id: 'ts_1', name: '第一节', startTime: '08:00', endTime: '08:45' },
+      { id: 'ts_2', name: '第二节', startTime: '08:55', endTime: '09:40' },
+      { id: 'ts_3', name: '第三节', startTime: '10:00', endTime: '10:45' },
+      { id: 'ts_4', name: '第四节', startTime: '10:55', endTime: '11:40' },
+      { id: 'ts_5', name: '第五节', startTime: '14:00', endTime: '14:45' },
+      { id: 'ts_6', name: '第六节', startTime: '14:55', endTime: '15:40' },
+    ]
   });
 
   const handleUpdateLesson = (updatedLesson: Lesson) => {
@@ -86,7 +94,7 @@ export default function App() {
             onAddLesson={handleAddLesson}
           />
         )}
-        {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} />}
+        {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onUpdateLesson={handleUpdateLesson} />}
         {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} onDuplicate={handleDuplicateLesson} />}
         {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={setCourses} />}
       </main>

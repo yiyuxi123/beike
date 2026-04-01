@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload } from 'lucide-react';
-import { Lesson, Task, UserSettings, Attachment } from '../types';
+import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
@@ -8,11 +8,12 @@ import { motion, AnimatePresence } from 'motion/react';
 interface LessonCardProps {
   key?: string | number;
   lesson: Lesson;
+  course?: Course;
   settings: UserSettings;
   onUpdate: (lesson: Lesson) => void;
 }
 
-export default function LessonCard({ lesson, settings, onUpdate }: LessonCardProps) {
+export default function LessonCard({ lesson, course, settings, onUpdate }: LessonCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +84,8 @@ export default function LessonCard({ lesson, settings, onUpdate }: LessonCardPro
     });
 
     if (settings.archiveFolder) {
-      alert(`已自动归档至: ${settings.archiveFolder}`);
+      const folderPath = `${settings.archiveFolder}/${course?.term || '未分类学期'}/${course?.name || '未分类课程'}/${lesson.title}`;
+      alert(`已自动归档至:\n${folderPath}`);
     }
 
     // Reset input

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lesson, Course } from '../types';
-import { Copy, FileText, CheckCircle2, Search } from 'lucide-react';
+import { Copy, FileText, CheckCircle2, Search, Paperclip, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface AssetsViewProps {
   lessons: Lesson[];
@@ -11,6 +12,11 @@ interface AssetsViewProps {
 
 export default function AssetsView({ lessons, courses, onDuplicate }: AssetsViewProps) {
   const completedLessons = lessons.filter(l => l.status === 'completed');
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedLessonId(prev => prev === id ? null : id);
+  };
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
@@ -46,15 +52,58 @@ export default function AssetsView({ lessons, courses, onDuplicate }: AssetsView
                 <p className="text-sm text-gray-500 mb-4">{course?.name} · {course?.term}</p>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span>包含 {lesson.attachments.length} 个附件</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                    <span>{lesson.tasks.length} 项备课清单</span>
+                  <div 
+                    className="flex items-center justify-between text-sm text-gray-600 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={() => toggleExpand(lesson.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span>包含 {lesson.attachments.length} 个附件, {lesson.tasks.length} 项清单</span>
+                    </div>
+                    {expandedLessonId === lesson.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
+
+                <AnimatePresence>
+                  {expandedLessonId === lesson.id && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden mt-3"
+                    >
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-3">
+                        {lesson.attachments.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">归档附件</h4>
+                            <div className="space-y-1.5">
+                              {lesson.attachments.map(att => (
+                                <div key={att.id} className="flex items-center gap-2 text-sm text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                  <Paperclip className="w-3.5 h-3.5 text-blue-500" />
+                                  <span className="truncate">{att.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {lesson.tasks.length > 0 && (
+                          <div>
+                            <h4 className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">备课清单记录</h4>
+                            <div className="space-y-1">
+                              {lesson.tasks.map(task => (
+                                <div key={task.id} className="flex items-start gap-2 text-sm text-gray-600">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                                  <span>{task.title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               
               <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-b-xl">

@@ -19,7 +19,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
   const [newLessonData, setNewLessonData] = useState({
     courseId: '',
     title: '',
-    time: '08:00'
+    time: settings.timetableSlots?.[0]?.startTime || '08:00'
   });
 
   // Get week days based on selectedDate
@@ -82,7 +82,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
     });
 
     setIsModalOpen(false);
-    setNewLessonData({ courseId: '', title: '', time: '08:00' });
+    setNewLessonData({ courseId: '', title: '', time: settings.timetableSlots?.[0]?.startTime || '08:00' });
   };
 
   const handleDuplicateSubmit = (e: React.FormEvent) => {
@@ -315,13 +315,27 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                <input 
-                  type="time" 
-                  required
-                  value={newLessonData.time}
-                  onChange={e => setNewLessonData({...newLessonData, time: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                {settings.timetableSlots && settings.timetableSlots.length > 0 ? (
+                  <select 
+                    required
+                    value={newLessonData.time}
+                    onChange={e => setNewLessonData({...newLessonData, time: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">请选择时间段...</option>
+                    {settings.timetableSlots.map(slot => (
+                      <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type="time" 
+                    required
+                    value={newLessonData.time}
+                    onChange={e => setNewLessonData({...newLessonData, time: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button 
