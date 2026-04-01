@@ -1,0 +1,100 @@
+import React from 'react';
+import { BookOpen, Calendar, LayoutDashboard, Library, Settings, CheckCircle, CalendarDays } from 'lucide-react';
+import { Course } from '../types';
+
+interface SidebarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  courses: Course[];
+  onSelectCourse: (id: string) => void;
+  selectedCourseId: string | null;
+}
+
+export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCourse, selectedCourseId }: SidebarProps) {
+  return (
+    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
+      <div className="p-6 flex items-center gap-3">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+          <CheckCircle className="w-5 h-5 text-white" />
+        </div>
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight">备课印记</h1>
+      </div>
+
+      <div className="px-4 pb-6 flex-1 overflow-y-auto">
+        <div className="space-y-1 mb-8">
+          <NavItem 
+            icon={<LayoutDashboard className="w-5 h-5" />} 
+            label="工作台" 
+            active={activeTab === 'dashboard'} 
+            onClick={() => setActiveTab('dashboard')} 
+          />
+          <NavItem 
+            icon={<CalendarDays className="w-5 h-5" />} 
+            label="课表排期" 
+            active={activeTab === 'schedule'} 
+            onClick={() => setActiveTab('schedule')} 
+          />
+          <NavItem 
+            icon={<Calendar className="w-5 h-5" />} 
+            label="备课本日历" 
+            active={activeTab === 'calendar'} 
+            onClick={() => setActiveTab('calendar')} 
+          />
+          <NavItem 
+            icon={<Library className="w-5 h-5" />} 
+            label="备课资产库" 
+            active={activeTab === 'assets'} 
+            onClick={() => setActiveTab('assets')} 
+          />
+        </div>
+
+        <div>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">我的课程</h2>
+          <div className="space-y-1">
+            {courses.map(course => (
+              <button
+                key={course.id}
+                onClick={() => onSelectCourse(course.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  activeTab === 'course' && selectedCourseId === course.id
+                  ? 'bg-blue-50 text-blue-700 font-medium' 
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+              >
+                <BookOpen className={`w-4 h-4 ${activeTab === 'course' && selectedCourseId === course.id ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="truncate">{course.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 border-t border-gray-200">
+        <NavItem 
+          icon={<Settings className="w-5 h-5" />} 
+          label="设置" 
+          active={activeTab === 'settings'} 
+          onClick={() => setActiveTab('settings')} 
+        />
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        active 
+          ? 'bg-blue-50 text-blue-700' 
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      {React.cloneElement(icon as React.ReactElement, { 
+        className: `w-5 h-5 ${active ? 'text-blue-600' : 'text-gray-400'}` 
+      })}
+      {label}
+    </button>
+  );
+}
