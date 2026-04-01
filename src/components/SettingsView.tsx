@@ -59,7 +59,7 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
   };
 
   const removeCourse = (id: string) => {
-    if (window.confirm('确定要删除该课程吗？相关的课时记录可能无法正常显示。')) {
+    if (window.confirm('确定要删除该课程吗？该课程下的所有课时记录也将被同步删除。')) {
       setLocalCourses(localCourses.filter(c => c.id !== id));
     }
   };

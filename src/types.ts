@@ -29,6 +29,7 @@ export type Lesson = {
   tasks: Task[];
   attachments: Attachment[];
   prepTime: number; // minutes
+  prepGoal?: string; // 备课目标
 };
 
 export type TimetableSlot = {

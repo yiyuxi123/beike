@@ -9,9 +9,10 @@ interface CalendarViewProps {
   settings: UserSettings;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
   onUpdateLesson: (lesson: Lesson) => void;
+  onDeleteLesson: (id: string) => void;
 }
 
-export default function CalendarView({ lessons, courses, settings, onAddLesson, onUpdateLesson }: CalendarViewProps) {
+export default function CalendarView({ lessons, courses, settings, onAddLesson, onUpdateLesson, onDeleteLesson }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -371,20 +372,34 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                   </div>
                 )}
               </div>
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-4 flex justify-between gap-3">
                 <button 
-                  type="button" 
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('确定要删除这个课时吗？')) {
+                      onDeleteLesson(selectedLesson.id);
+                      setIsEditModalOpen(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
                 >
-                  取消
+                  删除课时
                 </button>
-                <button 
-                  type="submit"
-                  className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
-                >
-                  保存修改
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    保存修改
+                  </button>
+                </div>
               </div>
             </form>
           </div>

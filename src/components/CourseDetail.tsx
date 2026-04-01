@@ -9,9 +9,10 @@ interface CourseDetailProps {
   settings: UserSettings;
   onUpdateLesson: (lesson: Lesson) => void;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
+  onDeleteLesson: (id: string) => void;
 }
 
-export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson }: CourseDetailProps) {
+export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson, onDeleteLesson }: CourseDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
@@ -100,6 +101,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
             course={course}
             settings={settings}
             onUpdate={onUpdateLesson} 
+            onDelete={() => onDeleteLesson(lesson.id)}
           />
         ))}
         {sortedLessons.length === 0 && (

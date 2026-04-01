@@ -7,9 +7,10 @@ interface DashboardProps {
   courses: Course[];
   lessons: Lesson[];
   settings: UserSettings;
+  onSelectCourse: (courseId: string) => void;
 }
 
-export default function Dashboard({ courses, lessons, settings }: DashboardProps) {
+export default function Dashboard({ courses, lessons, settings, onSelectCourse }: DashboardProps) {
   const urgentLessons = lessons.filter(l => {
     const { isUrgent } = formatTimeUntil(l.classTime, settings.reminderHours);
     return isUrgent && l.status !== 'completed';
@@ -99,7 +100,10 @@ export default function Dashboard({ courses, lessons, settings }: DashboardProps
                       <h4 className="font-medium text-gray-900">{lesson.title}</h4>
                       <p className="text-xs text-gray-500 mt-0.5">{course?.name} · {formatTimeUntil(lesson.classTime, settings.reminderHours).text}</p>
                     </div>
-                    <button className="px-4 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors">
+                    <button 
+                      onClick={() => onSelectCourse(lesson.courseId)}
+                      className="px-4 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                    >
                       去打勾
                     </button>
                   </div>
@@ -121,7 +125,11 @@ export default function Dashboard({ courses, lessons, settings }: DashboardProps
             const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
 
             return (
-              <div key={course.id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+              <div 
+                key={course.id} 
+                onClick={() => onSelectCourse(course.id)}
+                className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              >
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-semibold text-gray-900">{course.name}</h3>

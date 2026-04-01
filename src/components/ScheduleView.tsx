@@ -9,9 +9,10 @@ interface ScheduleViewProps {
   settings: UserSettings;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
   onAddMultipleLessons?: (lessons: Lesson[]) => void;
+  onDeleteLesson: (id: string) => void;
 }
 
-export default function ScheduleView({ lessons, courses, settings, onAddLesson, onAddMultipleLessons }: ScheduleViewProps) {
+export default function ScheduleView({ lessons, courses, settings, onAddLesson, onAddMultipleLessons, onDeleteLesson }: ScheduleViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
@@ -83,7 +84,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
     });
 
     setIsModalOpen(false);
-    setNewLessonData({ courseId: '', title: '', time: settings.timetableSlots?.[0]?.startTime || '08:00' });
+    setNewLessonData({ courseId: '', title: '', time: settings.timetableSlots?.[0]?.startTime || '08:00', isSpecialTime: false });
   };
 
   const handleDuplicateSubmit = (e: React.FormEvent) => {
@@ -213,29 +214,43 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
                         <BookOpen className="w-4 h-4" />
                         {course?.name} ({course?.grade})
                       </div>
-                      <button 
-                        onClick={() => {
-                          const newTime = new Date(lesson.classTime);
-                          newTime.setDate(newTime.getDate() + 7); // Default to next week
-                          const duplicatedLesson: Lesson = {
-                            ...lesson,
-                            id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            title: `${lesson.title} (复用)`,
-                            classTime: newTime.toISOString(),
-                            status: 'not_started',
-                            tasks: lesson.tasks.map(t => ({ ...t, completed: false }))
-                          };
-                          if (onAddMultipleLessons) {
-                            onAddMultipleLessons([duplicatedLesson]);
-                            alert('已成功复用到下周同一时间！');
-                          }
-                        }}
-                        className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded"
-                        title="复用到下周"
-                      >
-                        <Copy className="w-3 h-3" />
-                        复用到下周
-                      </button>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            const newTime = new Date(lesson.classTime);
+                            newTime.setDate(newTime.getDate() + 7); // Default to next week
+                            const duplicatedLesson: Lesson = {
+                              ...lesson,
+                              id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                              title: `${lesson.title} (复用)`,
+                              classTime: newTime.toISOString(),
+                              status: 'not_started',
+                              tasks: lesson.tasks.map(t => ({ ...t, completed: false }))
+                            };
+                            if (onAddMultipleLessons) {
+                              onAddMultipleLessons([duplicatedLesson]);
+                              alert('已成功复用到下周同一时间！');
+                            }
+                          }}
+                          className="text-gray-400 hover:text-blue-600 flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded"
+                          title="复用到下周"
+                        >
+                          <Copy className="w-3 h-3" />
+                          复用
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('确定要删除这个课时吗？')) {
+                              onDeleteLesson(lesson.id);
+                            }
+                          }}
+                          className="text-gray-400 hover:text-red-600 flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded"
+                          title="删除课时"
+                        >
+                          <X className="w-3 h-3" />
+                          删除
+                        </button>
+                      </div>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-2">{lesson.title}</h3>
                     <div className="flex items-center gap-3 text-sm">

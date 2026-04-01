@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing } from '../utils/audio';
@@ -11,9 +11,10 @@ interface LessonCardProps {
   course?: Course;
   settings: UserSettings;
   onUpdate: (lesson: Lesson) => void;
+  onDelete?: () => void;
 }
 
-export default function LessonCard({ lesson, course, settings, onUpdate }: LessonCardProps) {
+export default function LessonCard({ lesson, course, settings, onUpdate, onDelete }: LessonCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +142,85 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
     }
   };
 
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    
+    const newTask: Task = {
+      id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: newTaskTitle.trim(),
+      completed: false
+    };
+    
+    onUpdate({
+      ...lesson,
+      tasks: [...lesson.tasks, newTask],
+      status: lesson.status === 'completed' ? 'in_progress' : lesson.status
+    });
+    setNewTaskTitle('');
+  };
+
+  const handleDeleteTask = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedTasks = lesson.tasks.filter(t => t.id !== taskId);
+    
+    const newCompletedCount = updatedTasks.filter(t => t.completed).length;
+    let newStatus = lesson.status;
+    
+    if (updatedTasks.length === 0) newStatus = 'not_started';
+    else if (newCompletedCount === updatedTasks.length) newStatus = 'completed';
+    else if (newCompletedCount === 0) newStatus = 'not_started';
+    else newStatus = 'in_progress';
+
+    onUpdate({
+      ...lesson,
+      tasks: updatedTasks,
+      status: newStatus
+    });
+  };
+
+  const handleGoalChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onUpdate({
+      ...lesson,
+      prepGoal: e.target.value
+    });
+  };
+
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [focusTime, setFocusTime] = useState(0);
+  const timerRef = useRef<number | null>(null);
+
+  const toggleFocusMode = () => {
+    if (isFocusMode) {
+      // Stop focus mode
+      if (timerRef.current) clearInterval(timerRef.current);
+      setIsFocusMode(false);
+      // Add elapsed time to prepTime (convert seconds to minutes)
+      const addedMinutes = Math.floor(focusTime / 60);
+      if (addedMinutes > 0) {
+        onUpdate({
+          ...lesson,
+          prepTime: (lesson.prepTime || 0) + addedMinutes
+        });
+      }
+      setFocusTime(0);
+    } else {
+      // Start focus mode
+      setIsFocusMode(true);
+      timerRef.current = window.setInterval(() => {
+        setFocusTime(prev => prev + 1);
+      }, 1000);
+    }
+  };
+
+  const formatFocusTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   return (
     <div className={`bg-white rounded-xl border shadow-sm transition-all duration-200 relative ${lesson.status === 'completed' ? 'border-green-200 opacity-80' : 'border-gray-200 hover:shadow-md'}`}>
       
@@ -199,6 +279,12 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
                 <span>{lesson.attachments.length} 个附件</span>
               </div>
             )}
+            {(lesson.prepTime || 0) > 0 && (
+              <div className="flex items-center gap-1">
+                <Target className="w-4 h-4" />
+                <span>已专注 {lesson.prepTime} 分钟</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -227,27 +313,68 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
           >
             <div className="p-4 bg-gray-50/50">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Checklist */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center justify-between">
-                    <span>备课清单</span>
-                    <span className="text-xs text-gray-500 font-normal">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
-                  </h4>
-                  <div className="space-y-2">
-                    {lesson.tasks.map(task => (
-                      <div 
-                        key={task.id} 
-                        className="flex items-start gap-2 cursor-pointer group"
-                        onClick={(e) => { e.stopPropagation(); handleTaskToggle(task.id); }}
-                      >
-                        <div className="mt-0.5 flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors">
-                          {task.completed ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5" />}
+                {/* Checklist & Goal */}
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-blue-500" />
+                      备课目标
+                    </h4>
+                    <textarea
+                      value={lesson.prepGoal || ''}
+                      onChange={handleGoalChange}
+                      placeholder="输入本节课的教学目标、重难点等..."
+                      className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center justify-between">
+                      <span>备课清单</span>
+                      <span className="text-xs text-gray-500 font-normal">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
+                    </h4>
+                    <div className="space-y-2 mb-3">
+                      {lesson.tasks.map(task => (
+                        <div 
+                          key={task.id} 
+                          className="flex items-start justify-between gap-2 cursor-pointer group p-1.5 -mx-1.5 rounded hover:bg-white transition-colors"
+                          onClick={(e) => { e.stopPropagation(); handleTaskToggle(task.id); }}
+                        >
+                          <div className="flex items-start gap-2 flex-1">
+                            <div className="mt-0.5 flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors">
+                              {task.completed ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5" />}
+                            </div>
+                            <span className={`text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={(e) => handleDeleteTask(task.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all"
+                            title="删除任务"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                        <span className={`text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-700 group-hover:text-gray-900'}`}>
-                          {task.title}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    
+                    <form onSubmit={handleAddTask} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="添加新任务..."
+                        className="flex-1 text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={!newTaskTitle.trim()}
+                        className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </form>
                   </div>
                 </div>
 
@@ -283,9 +410,25 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
                       上传附件
                     </button>
                     {lesson.status !== 'completed' && (
-                      <button className="flex-1 py-2 px-3 bg-blue-50 border border-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
-                        <Play className="w-4 h-4" />
-                        专注备课
+                      <button 
+                        onClick={toggleFocusMode}
+                        className={`flex-1 py-2 px-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                          isFocusMode 
+                            ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100' 
+                            : 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        {isFocusMode ? (
+                          <>
+                            <Square className="w-4 h-4 fill-current" />
+                            结束专注 ({formatFocusTime(focusTime)})
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            专注备课
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
@@ -313,6 +456,24 @@ export default function LessonCard({ lesson, course, settings, onUpdate }: Lesso
                       需重讲/优化
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Delete Lesson Button */}
+              {onDelete && (
+                <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm('确定要删除这个课时吗？')) {
+                        onDelete();
+                      }
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    删除课时
+                  </button>
                 </div>
               )}
             </div>

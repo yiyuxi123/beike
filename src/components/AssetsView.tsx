@@ -11,8 +11,22 @@ interface AssetsViewProps {
 }
 
 export default function AssetsView({ lessons, courses, onDuplicate }: AssetsViewProps) {
-  const completedLessons = lessons.filter(l => l.status === 'completed');
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+
+  const completedLessons = lessons.filter(l => {
+    if (l.status !== 'completed') return false;
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const course = courses.find(c => c.id === l.courseId);
+    
+    return (
+      l.title.toLowerCase().includes(query) ||
+      (course?.name.toLowerCase().includes(query)) ||
+      l.attachments.some(a => a.name.toLowerCase().includes(query))
+    );
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedLessonId(prev => prev === id ? null : id);
@@ -29,7 +43,9 @@ export default function AssetsView({ lessons, courses, onDuplicate }: AssetsView
           <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input 
             type="text" 
-            placeholder="搜索教案、课件..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索教案、课件、课程..." 
             className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
           />
         </div>
