@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
-import { UserSettings } from '../types';
-import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen } from 'lucide-react';
+import { Course, UserSettings } from '../types';
+import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen } from 'lucide-react';
 
 interface SettingsViewProps {
   settings: UserSettings;
   onUpdateSettings: (settings: UserSettings) => void;
+  courses: Course[];
+  onUpdateCourses: (courses: Course[]) => void;
 }
 
-export default function SettingsView({ settings, onUpdateSettings }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, courses, onUpdateCourses }: SettingsViewProps) {
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  const [localCourses, setLocalCourses] = useState<Course[]>(courses);
   const [newTask, setNewTask] = useState('');
   const [showSaved, setShowSaved] = useState(false);
+  
+  const [newCourse, setNewCourse] = useState<Partial<Course>>({
+    name: '', subject: '', grade: '', term: ''
+  });
 
   const handleSave = () => {
     onUpdateSettings(localSettings);
+    onUpdateCourses(localCourses);
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
   };
@@ -34,6 +42,21 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
       ...localSettings,
       defaultTasks: newTasks
     });
+  };
+
+  const addCourse = () => {
+    if (!newCourse.name || !newCourse.subject || !newCourse.grade || !newCourse.term) return;
+    setLocalCourses([
+      ...localCourses, 
+      { ...newCourse, id: `c_${Date.now()}` } as Course
+    ]);
+    setNewCourse({ name: '', subject: '', grade: '', term: '' });
+  };
+
+  const removeCourse = (id: string) => {
+    if (window.confirm('确定要删除该课程吗？相关的课时记录可能无法正常显示。')) {
+      setLocalCourses(localCourses.filter(c => c.id !== id));
+    }
   };
 
   const handleSelectFolder = async () => {
@@ -76,6 +99,124 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
       </div>
 
       <div className="space-y-6">
+        {/* Personal Info Settings */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <User className="w-5 h-5 text-blue-600" />
+              个人信息
+            </h2>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                <input 
+                  type="text" 
+                  value={localSettings.personalInfo?.name || ''}
+                  onChange={e => setLocalSettings({
+                    ...localSettings, 
+                    personalInfo: { ...localSettings.personalInfo!, name: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">职称/头衔</label>
+                <input 
+                  type="text" 
+                  value={localSettings.personalInfo?.title || ''}
+                  onChange={e => setLocalSettings({
+                    ...localSettings, 
+                    personalInfo: { ...localSettings.personalInfo!, title: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">任职学校</label>
+                <input 
+                  type="text" 
+                  value={localSettings.personalInfo?.school || ''}
+                  onChange={e => setLocalSettings({
+                    ...localSettings, 
+                    personalInfo: { ...localSettings.personalInfo!, school: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Course Management */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              课程管理
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">管理您本学期教授的所有课程</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3 mb-6">
+              {localCourses.map(course => (
+                <div key={course.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg group">
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">{course.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">({course.subject} · {course.grade} · {course.term})</span>
+                  </div>
+                  <button 
+                    onClick={() => removeCourse(course.id)}
+                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              <input 
+                type="text" 
+                placeholder="课程名称 (如: 三年级数学上册)"
+                value={newCourse.name}
+                onChange={e => setNewCourse({...newCourse, name: e.target.value})}
+                className="col-span-4 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="text" 
+                placeholder="学科 (如: 数学)"
+                value={newCourse.subject}
+                onChange={e => setNewCourse({...newCourse, subject: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="text" 
+                placeholder="年级 (如: 三年级)"
+                value={newCourse.grade}
+                onChange={e => setNewCourse({...newCourse, grade: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="text" 
+                placeholder="学期 (如: 2023-2024上)"
+                value={newCourse.term}
+                onChange={e => setNewCourse({...newCourse, term: e.target.value})}
+                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button 
+                onClick={addCourse}
+                disabled={!newCourse.name || !newCourse.subject || !newCourse.grade || !newCourse.term}
+                className="col-span-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Basic Settings */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100 bg-gray-50/50">

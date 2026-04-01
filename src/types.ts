@@ -36,4 +36,10 @@ export type UserSettings = {
   reminderHours: number;
   defaultTasks: string[];
   archiveFolder?: string;
+  personalInfo?: {
+    name: string;
+    title: string;
+    school: string;
+    avatar?: string;
+  };
 };

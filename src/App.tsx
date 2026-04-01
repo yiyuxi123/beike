@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { mockCourses, mockLessons } from './data/mock';
-import { Lesson, UserSettings } from './types';
+import { Course, Lesson, UserSettings } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import CourseDetail from './components/CourseDetail';
@@ -12,6 +12,7 @@ import ScheduleView from './components/ScheduleView';
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [lessons, setLessons] = useState<Lesson[]>(mockLessons);
   const [settings, setSettings] = useState<UserSettings>({
     soundEnabled: true,
@@ -21,7 +22,12 @@ export default function App() {
       '教学PPT已上传',
       '随堂练习题已准备',
       '分层作业已设计'
-    ]
+    ],
+    personalInfo: {
+      name: '张老师',
+      title: '高级数学教师',
+      school: '第一实验小学'
+    }
   });
 
   const handleUpdateLesson = (updatedLesson: Lesson) => {
@@ -31,15 +37,19 @@ export default function App() {
   const handleAddLesson = (newLesson: Omit<Lesson, 'id'>) => {
     const lesson: Lesson = {
       ...newLesson,
-      id: `l_${Date.now()}`
+      id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
     setLessons([...lessons, lesson]);
+  };
+
+  const handleAddMultipleLessons = (newLessons: Lesson[]) => {
+    setLessons([...lessons, ...newLessons]);
   };
 
   const handleDuplicateLesson = (lesson: Lesson) => {
     const duplicatedLesson: Lesson = {
       ...lesson,
-      id: `l_${Date.now()}`,
+      id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: `${lesson.title} (复用)`,
       status: 'not_started',
       classTime: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days from now
@@ -59,25 +69,26 @@ export default function App() {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
-        courses={mockCourses}
+        courses={courses}
         onSelectCourse={handleSelectCourse}
         selectedCourseId={selectedCourseId}
+        settings={settings}
       />
       <main className="flex-1 overflow-y-auto p-8">
-        {activeTab === 'dashboard' && <Dashboard courses={mockCourses} lessons={lessons} settings={settings} />}
-        {activeTab === 'schedule' && <ScheduleView lessons={lessons} courses={mockCourses} settings={settings} onAddLesson={handleAddLesson} />}
+        {activeTab === 'dashboard' && <Dashboard courses={courses} lessons={lessons} settings={settings} />}
+        {activeTab === 'schedule' && <ScheduleView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onAddMultipleLessons={handleAddMultipleLessons} />}
         {activeTab === 'course' && selectedCourseId && (
           <CourseDetail 
-            course={mockCourses.find(c => c.id === selectedCourseId)!} 
+            course={courses.find(c => c.id === selectedCourseId)!} 
             lessons={lessons.filter(l => l.courseId === selectedCourseId)}
             settings={settings}
             onUpdateLesson={handleUpdateLesson}
             onAddLesson={handleAddLesson}
           />
         )}
-        {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={mockCourses} settings={settings} />}
-        {activeTab === 'assets' && <AssetsView lessons={lessons} courses={mockCourses} onDuplicate={handleDuplicateLesson} />}
-        {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} />}
+        {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} />}
+        {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} onDuplicate={handleDuplicateLesson} />}
+        {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={setCourses} />}
       </main>
     </div>
   );

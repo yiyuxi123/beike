@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
-import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X, Copy } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ScheduleViewProps {
@@ -8,11 +8,14 @@ interface ScheduleViewProps {
   courses: Course[];
   settings: UserSettings;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
+  onAddMultipleLessons?: (lessons: Lesson[]) => void;
 }
 
-export default function ScheduleView({ lessons, courses, settings, onAddLesson }: ScheduleViewProps) {
+export default function ScheduleView({ lessons, courses, settings, onAddLesson, onAddMultipleLessons }: ScheduleViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [targetDate, setTargetDate] = useState('');
   const [newLessonData, setNewLessonData] = useState({
     courseId: '',
     title: '',
@@ -82,6 +85,33 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson }
     setNewLessonData({ courseId: '', title: '', time: '08:00' });
   };
 
+  const handleDuplicateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetDate || !onAddMultipleLessons || dayLessons.length === 0) return;
+
+    const targetD = new Date(targetDate);
+    
+    const duplicatedLessons: Lesson[] = dayLessons.map(lesson => {
+      const originalTime = new Date(lesson.classTime);
+      const newTime = new Date(targetD);
+      newTime.setHours(originalTime.getHours(), originalTime.getMinutes(), 0, 0);
+
+      return {
+        ...lesson,
+        id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: `${lesson.title} (复用)`,
+        classTime: newTime.toISOString(),
+        status: 'not_started',
+        tasks: lesson.tasks.map(t => ({ ...t, completed: false }))
+      };
+    });
+
+    onAddMultipleLessons(duplicatedLessons);
+    setIsDuplicateModalOpen(false);
+    setTargetDate('');
+    alert('课表已成功复用！');
+  };
+
   const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
   return (
@@ -91,13 +121,24 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson }
           <h1 className="text-2xl font-bold text-gray-900">课表排期</h1>
           <p className="text-gray-500 mt-1">集中管理每日课表与时间段</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          添加排课
-        </button>
+        <div className="flex gap-3">
+          {dayLessons.length > 0 && (
+            <button 
+              onClick={() => setIsDuplicateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <Copy className="w-4 h-4" />
+              复用本日课表
+            </button>
+          )}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            添加排课
+          </button>
+        </div>
       </div>
 
       {/* Week Selector */}
@@ -165,10 +206,35 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson }
                       <div className="w-0.5 bg-gray-200 flex-1 absolute top-8 bottom-[-2rem]"></div>
                     )}
                   </div>
-                  <div className="flex-1 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-2 text-sm text-blue-600 font-medium mb-2">
-                      <BookOpen className="w-4 h-4" />
-                      {course?.name} ({course?.grade})
+                  <div className="flex-1 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow relative group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
+                        <BookOpen className="w-4 h-4" />
+                        {course?.name} ({course?.grade})
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const newTime = new Date(lesson.classTime);
+                          newTime.setDate(newTime.getDate() + 7); // Default to next week
+                          const duplicatedLesson: Lesson = {
+                            ...lesson,
+                            id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            title: `${lesson.title} (复用)`,
+                            classTime: newTime.toISOString(),
+                            status: 'not_started',
+                            tasks: lesson.tasks.map(t => ({ ...t, completed: false }))
+                          };
+                          if (onAddMultipleLessons) {
+                            onAddMultipleLessons([duplicatedLesson]);
+                            alert('已成功复用到下周同一时间！');
+                          }
+                        }}
+                        className="text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded"
+                        title="复用到下周"
+                      >
+                        <Copy className="w-3 h-3" />
+                        复用到下周
+                      </button>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-2">{lesson.title}</h3>
                     <div className="flex items-center gap-3 text-sm">
@@ -270,6 +336,52 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson }
                   className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
                 >
                   确定添加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Schedule Modal */}
+      {isDuplicateModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">复用本日课表</h2>
+              <button onClick={() => setIsDuplicateModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleDuplicateSubmit} className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <p className="text-sm text-blue-800">
+                  将把 <strong>{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日</strong> 的 {dayLessons.length} 节课完整复用到目标日期。
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">选择目标日期</label>
+                <input 
+                  type="date" 
+                  required
+                  value={targetDate}
+                  onChange={e => setTargetDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setIsDuplicateModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit"
+                  className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  确定复用
                 </button>
               </div>
             </form>
