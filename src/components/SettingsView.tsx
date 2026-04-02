@@ -8,9 +8,11 @@ interface SettingsViewProps {
   onUpdateSettings: (settings: UserSettings) => void;
   courses: Course[];
   onUpdateCourses: (courses: Course[]) => void;
+  onImportData: (data: any) => void;
+  onExportData: () => void;
 }
 
-export default function SettingsView({ settings, onUpdateSettings, courses, onUpdateCourses }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, courses, onUpdateCourses, onImportData, onExportData }: SettingsViewProps) {
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
   const [localCourses, setLocalCourses] = useState<Course[]>(courses);
   const [newTask, setNewTask] = useState('');
@@ -23,6 +25,14 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
   const [newSlot, setNewSlot] = useState<Partial<TimetableSlot>>({
     name: '', startTime: '08:00', endTime: '08:45'
   });
+
+  React.useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  React.useEffect(() => {
+    setLocalCourses(courses);
+  }, [courses]);
 
   const handleSave = () => {
     onUpdateSettings(localSettings);
@@ -380,6 +390,51 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                 >
                   选择文件夹
                 </button>
+              </div>
+            </div>
+
+            <div className="w-full h-px bg-gray-100"></div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <Save className="w-4 h-4 text-gray-500" />
+                  数据备份与恢复
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">导出您的课程、课时和设置数据，或从备份文件恢复</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={onExportData}
+                  className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  导出配置
+                </button>
+                <label className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+                  导入配置
+                  <input 
+                    type="file" 
+                    accept=".json" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const data = JSON.parse(event.target?.result as string);
+                            onImportData(data);
+                            alert('配置导入成功！');
+                          } catch (err) {
+                            alert('导入失败，文件格式不正确。');
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                      e.target.value = '';
+                    }} 
+                  />
+                </label>
               </div>
             </div>
           </div>

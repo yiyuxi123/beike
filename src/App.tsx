@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { mockCourses, mockLessons } from './data/mock';
 import { Course, Lesson, UserSettings } from './types';
 import Sidebar from './components/Sidebar';
@@ -9,9 +9,13 @@ import AssetsView from './components/AssetsView';
 import SettingsView from './components/SettingsView';
 import ScheduleView from './components/ScheduleView';
 
+const STORAGE_KEY = 'teacher-prep-data';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [lessons, setLessons] = useState<Lesson[]>(mockLessons);
   const [settings, setSettings] = useState<UserSettings>({
@@ -37,6 +41,74 @@ export default function App() {
       { id: 'ts_6', name: '第六节', startTime: '14:55', endTime: '15:40' },
     ]
   });
+
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.courses) setCourses(parsed.courses);
+        if (parsed.lessons) setLessons(parsed.lessons);
+        if (parsed.settings) {
+          setSettings({
+            ...parsed.settings,
+            archiveDirectoryHandle: undefined // Cannot serialize FileSystemDirectoryHandle
+          });
+        }
+      } catch (e) {
+        console.error("Failed to load data from local storage", e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      const dataToSave = {
+        courses,
+        lessons,
+        settings: {
+          ...settings,
+          archiveDirectoryHandle: undefined // Exclude from serialization
+        }
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }
+  }, [courses, lessons, settings, isLoaded]);
+
+  const handleExportData = () => {
+    const dataToExport = {
+      courses,
+      lessons,
+      settings: {
+        ...settings,
+        archiveDirectoryHandle: undefined
+      }
+    };
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `teacher-prep-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (data: any) => {
+    if (data && typeof data === 'object') {
+      if (Array.isArray(data.courses)) setCourses(data.courses);
+      if (Array.isArray(data.lessons)) setLessons(data.lessons);
+      if (data.settings && typeof data.settings === 'object') {
+        setSettings({
+          ...settings,
+          ...data.settings,
+          archiveDirectoryHandle: undefined
+        });
+      }
+    }
+  };
 
   const handleUpdateCourses = (newCourses: Course[]) => {
     setCourses(newCourses);
@@ -112,7 +184,7 @@ export default function App() {
         )}
         {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onUpdateLesson={handleUpdateLesson} onDeleteLesson={handleDeleteLesson} />}
         {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} onDuplicate={handleDuplicateLesson} />}
-        {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={handleUpdateCourses} />}
+        {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={handleUpdateCourses} onImportData={handleImportData} onExportData={handleExportData} />}
       </main>
     </div>
   );
