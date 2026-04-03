@@ -8,6 +8,7 @@ import CalendarView from './components/CalendarView';
 import AssetsView from './components/AssetsView';
 import SettingsView from './components/SettingsView';
 import ScheduleView from './components/ScheduleView';
+import { getDirectoryHandle } from './utils/indexedDB';
 
 const STORAGE_KEY = 'teacher-prep-data';
 
@@ -43,23 +44,43 @@ export default function App() {
   });
 
   useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
+    const loadData = async () => {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      let loadedSettings = { ...settings };
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.courses) setCourses(parsed.courses);
+          if (parsed.lessons) setLessons(parsed.lessons);
+          if (parsed.settings) {
+            loadedSettings = { ...loadedSettings, ...parsed.settings };
+          }
+        } catch (e) {
+          console.error("Failed to load data from local storage", e);
+        }
+      }
+      
       try {
-        const parsed = JSON.parse(savedData);
-        if (parsed.courses) setCourses(parsed.courses);
-        if (parsed.lessons) setLessons(parsed.lessons);
-        if (parsed.settings) {
-          setSettings({
-            ...parsed.settings,
-            archiveDirectoryHandle: undefined // Cannot serialize FileSystemDirectoryHandle
-          });
+        const handle = await getDirectoryHandle();
+        if (handle) {
+          // Verify permission
+          const options = { mode: 'readwrite' as FileSystemPermissionMode };
+          if ((await handle.queryPermission(options)) === 'granted') {
+            loadedSettings.archiveDirectoryHandle = handle;
+          } else {
+            // We might need to request permission later when user interacts
+            loadedSettings.archiveDirectoryHandle = handle;
+          }
         }
       } catch (e) {
-        console.error("Failed to load data from local storage", e);
+        console.error("Failed to load directory handle", e);
       }
-    }
-    setIsLoaded(true);
+      
+      setSettings(loadedSettings);
+      setIsLoaded(true);
+    };
+    
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -183,7 +204,7 @@ export default function App() {
           />
         )}
         {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onUpdateLesson={handleUpdateLesson} onDeleteLesson={handleDeleteLesson} />}
-        {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} onDuplicate={handleDuplicateLesson} />}
+        {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} settings={settings} onDuplicate={handleDuplicateLesson} />}
         {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={handleUpdateCourses} onImportData={handleImportData} onExportData={handleExportData} />}
       </main>
     </div>

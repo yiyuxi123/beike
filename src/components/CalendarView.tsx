@@ -115,33 +115,33 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
     <div className="max-w-5xl mx-auto pb-12">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">备课本日历</h1>
-          <p className="text-gray-500 mt-1">全局掌控教学节奏，点击日期可直接添加排课</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">备课本日历</h1>
+          <p className="text-gray-500 mt-2">全局掌控教学节奏，点击日期可直接添加排课</p>
         </div>
-        <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
-          <button onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-md transition-colors">
+        <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-xl border border-gray-200 shadow-sm">
+          <button onClick={prevMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           <span className="text-base font-medium text-gray-900 min-w-[100px] text-center">
             {year}年 {month + 1}月
           </span>
-          <button onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-md transition-colors">
+          <button onClick={nextMonth} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/80">
           {['一', '二', '三', '四', '五', '六', '日'].map(day => (
-            <div key={day} className="py-3 text-center text-sm font-medium text-gray-500">
+            <div key={day} className="py-4 text-center text-sm font-semibold text-gray-500">
               周{day}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 auto-rows-[120px]">
+        <div className="grid grid-cols-7 auto-rows-[140px]">
           {blanks.map(b => (
-            <div key={`blank-${b}`} className="border-b border-r border-gray-100 bg-gray-50/50"></div>
+            <div key={`blank-${b}`} className="border-b border-r border-gray-100 bg-gray-50/30"></div>
           ))}
           {days.map(day => {
             const dayLessons = getLessonsForDay(day);
@@ -151,17 +151,17 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
               <div 
                 key={day} 
                 onClick={() => handleDayClick(day)}
-                className={`border-b border-r border-gray-100 p-2 transition-colors hover:bg-gray-50 cursor-pointer group relative ${isToday ? 'bg-blue-50/30' : ''}`}
+                className={`border-b border-r border-gray-100 p-3 transition-all hover:bg-blue-50/30 cursor-pointer group relative ${isToday ? 'bg-blue-50/10' : ''}`}
               >
-                <div className="flex justify-between items-start mb-1">
-                  <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isToday ? 'bg-blue-600 text-white shadow-sm shadow-blue-200' : 'text-gray-700 group-hover:text-blue-600'}`}>
                     {day}
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Plus className="w-4 h-4 text-gray-400" />
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-1 shadow-sm border border-gray-100">
+                    <Plus className="w-4 h-4 text-blue-600" />
                   </div>
                 </div>
-                <div className="space-y-1 overflow-y-auto max-h-[75px] pr-1 scrollbar-hide">
+                <div className="space-y-1.5 overflow-y-auto max-h-[85px] pr-1 scrollbar-hide">
                   {dayLessons.map(lesson => {
                     const course = courses.find(c => c.id === lesson.courseId);
                     const isUrgent = formatTimeUntil(lesson.classTime, settings.reminderHours).isUrgent && lesson.status !== 'completed';
@@ -170,7 +170,7 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                       <div 
                         key={lesson.id} 
                         onClick={(e) => handleLessonClick(e, lesson)}
-                        className={`text-xs px-2 py-1 rounded truncate flex items-center gap-1 border hover:opacity-80 transition-opacity ${
+                        className={`text-xs px-2.5 py-1.5 rounded-lg truncate flex items-center gap-1.5 border hover:shadow-sm transition-all hover:-translate-y-0.5 ${
                           lesson.status === 'completed' ? 'bg-green-50 border-green-100 text-green-700' :
                           isUrgent ? 'bg-red-50 border-red-100 text-red-700' :
                           'bg-blue-50 border-blue-100 text-blue-700'
@@ -178,13 +178,13 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                         title={`${course?.name} - ${lesson.title}`}
                       >
                         {lesson.status === 'completed' ? (
-                          <CheckCircle2 className="w-3 h-3 flex-shrink-0" />
+                          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
                         ) : isUrgent ? (
-                          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                         ) : (
-                          <Circle className="w-3 h-3 flex-shrink-0" />
+                          <Circle className="w-3.5 h-3.5 flex-shrink-0" />
                         )}
-                        <span className="truncate">{lesson.title}</span>
+                        <span className="truncate font-medium">{lesson.title}</span>
                       </div>
                     );
                   })}
@@ -197,24 +197,24 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
 
       {/* Add Lesson Modal */}
       {isAddModalOpen && selectedDate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
                 添加排课 ({selectedDate.getMonth() + 1}月{selectedDate.getDate()}日)
               </h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form onSubmit={handleAddSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">选择课程</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">选择课程</label>
                 <select 
                   required
                   value={lessonFormData.courseId}
                   onChange={e => setLessonFormData({...lessonFormData, courseId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm bg-white"
                 >
                   <option value="">请选择课程...</option>
                   {courses.map(c => (
@@ -223,69 +223,71 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">课时标题</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">课时标题</label>
                 <input 
                   type="text" 
                   required
                   value={lessonFormData.title}
                   onChange={e => setLessonFormData({...lessonFormData, title: e.target.value})}
                   placeholder="例如：第三单元：测量"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                {settings.timetableSlots && settings.timetableSlots.length > 0 && !lessonFormData.isSpecialTime ? (
-                  <select 
-                    required
-                    value={lessonFormData.time}
-                    onChange={e => {
-                      if (e.target.value === 'special') {
-                        setLessonFormData({...lessonFormData, isSpecialTime: true, time: '12:00'});
-                      } else {
-                        setLessonFormData({...lessonFormData, time: e.target.value});
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <label className="block text-sm font-semibold text-gray-700 mb-3">上课时间段</label>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {settings.timetableSlots?.map(slot => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => setLessonFormData({...lessonFormData, time: slot.startTime, isSpecialTime: false})}
+                      className={`p-3 text-sm rounded-xl border transition-all duration-200 ${
+                        lessonFormData.time === slot.startTime && !lessonFormData.isSpecialTime 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-500/20' 
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 text-gray-600'
+                      }`}
+                    >
+                      <div className="font-semibold">{slot.name}</div>
+                      <div className="text-xs opacity-70 mt-1">{slot.startTime}</div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: true})}
+                    className={`p-3 text-sm rounded-xl border flex flex-col items-center justify-center transition-all duration-200 ${
+                      lessonFormData.isSpecialTime 
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-500/20' 
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 text-gray-600'
+                    }`}
                   >
-                    <option value="">请选择时间段...</option>
-                    {settings.timetableSlots.map(slot => (
-                      <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
-                    ))}
-                    <option value="special">特殊时间...</option>
-                  </select>
-                ) : (
-                  <div className="flex gap-2">
+                    <Clock className="w-5 h-5 mb-1" />
+                    <span className="text-xs font-semibold">自定义时间</span>
+                  </button>
+                </div>
+                
+                {lessonFormData.isSpecialTime && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
                     <input 
                       type="time" 
                       required
                       value={lessonFormData.time}
                       onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                     />
-                    {settings.timetableSlots && settings.timetableSlots.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: false, time: settings.timetableSlots?.[0]?.startTime || '08:00'})}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-                      >
-                        返回预设
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
                 <button 
                   type="button" 
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                  className="px-6 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-sm font-semibold transition-all"
                 >
                   取消
                 </button>
                 <button 
                   type="submit"
-                  className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                  className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   确定添加
                 </button>
@@ -297,22 +299,22 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
 
       {/* Edit Lesson Modal */}
       {isEditModalOpen && selectedLesson && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">编辑排课</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">编辑排课</h2>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <form onSubmit={handleEditSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">选择课程</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">选择课程</label>
                 <select 
                   required
                   value={lessonFormData.courseId}
                   onChange={e => setLessonFormData({...lessonFormData, courseId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm bg-white"
                 >
                   <option value="">请选择课程...</option>
                   {courses.map(c => (
@@ -321,58 +323,60 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">课时标题</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">课时标题</label>
                 <input 
                   type="text" 
                   required
                   value={lessonFormData.title}
                   onChange={e => setLessonFormData({...lessonFormData, title: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">上课时间段</label>
-                {settings.timetableSlots && settings.timetableSlots.length > 0 && !lessonFormData.isSpecialTime ? (
-                  <select 
-                    required
-                    value={lessonFormData.time}
-                    onChange={e => {
-                      if (e.target.value === 'special') {
-                        setLessonFormData({...lessonFormData, isSpecialTime: true, time: '12:00'});
-                      } else {
-                        setLessonFormData({...lessonFormData, time: e.target.value});
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <label className="block text-sm font-semibold text-gray-700 mb-3">上课时间段</label>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {settings.timetableSlots?.map(slot => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => setLessonFormData({...lessonFormData, time: slot.startTime, isSpecialTime: false})}
+                      className={`p-3 text-sm rounded-xl border transition-all duration-200 ${
+                        lessonFormData.time === slot.startTime && !lessonFormData.isSpecialTime 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-500/20' 
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 text-gray-600'
+                      }`}
+                    >
+                      <div className="font-semibold">{slot.name}</div>
+                      <div className="text-xs opacity-70 mt-1">{slot.startTime}</div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: true})}
+                    className={`p-3 text-sm rounded-xl border flex flex-col items-center justify-center transition-all duration-200 ${
+                      lessonFormData.isSpecialTime 
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-500/20' 
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 text-gray-600'
+                    }`}
                   >
-                    <option value="">请选择时间段...</option>
-                    {settings.timetableSlots.map(slot => (
-                      <option key={slot.id} value={slot.startTime}>{slot.name} ({slot.startTime} - {slot.endTime})</option>
-                    ))}
-                    <option value="special">特殊时间...</option>
-                  </select>
-                ) : (
-                  <div className="flex gap-2">
+                    <Clock className="w-5 h-5 mb-1" />
+                    <span className="text-xs font-semibold">自定义时间</span>
+                  </button>
+                </div>
+                
+                {lessonFormData.isSpecialTime && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
                     <input 
                       type="time" 
                       required
                       value={lessonFormData.time}
                       onChange={e => setLessonFormData({...lessonFormData, time: e.target.value})}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
                     />
-                    {settings.timetableSlots && settings.timetableSlots.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setLessonFormData({...lessonFormData, isSpecialTime: false, time: settings.timetableSlots?.[0]?.startTime || '08:00'})}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-                      >
-                        返回预设
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
-              <div className="pt-4 flex justify-between gap-3">
+              <div className="pt-6 flex justify-between gap-3 border-t border-gray-100">
                 <button 
                   type="button"
                   onClick={() => {
@@ -381,7 +385,7 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                       setIsEditModalOpen(false);
                     }
                   }}
-                  className="px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors"
+                  className="px-6 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl text-sm font-semibold transition-all"
                 >
                   删除课时
                 </button>
@@ -389,13 +393,13 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                   <button 
                     type="button" 
                     onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                    className="px-6 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-sm font-semibold transition-all"
                   >
                     取消
                   </button>
                   <button 
                     type="submit"
-                    className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                    className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
                   >
                     保存修改
                   </button>

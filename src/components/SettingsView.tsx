@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Course, UserSettings } from '../types';
 import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen, Clock } from 'lucide-react';
 import { TimetableSlot } from '../types';
+import { storeDirectoryHandle } from '../utils/indexedDB';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -34,9 +35,16 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
     setLocalCourses(courses);
   }, [courses]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     onUpdateSettings(localSettings);
     onUpdateCourses(localCourses);
+    if (localSettings.archiveDirectoryHandle) {
+      try {
+        await storeDirectoryHandle(localSettings.archiveDirectoryHandle);
+      } catch (e) {
+        console.error("Failed to store directory handle to IndexedDB", e);
+      }
+    }
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
   };
@@ -123,12 +131,12 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
     <div className="max-w-3xl mx-auto pb-12">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">系统设置</h1>
-          <p className="text-gray-500 mt-1">定制你的专属备课体验</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">系统设置</h1>
+          <p className="text-gray-500 mt-2">定制你的专属备课体验</p>
         </div>
         <button 
           onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm relative"
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all shadow-sm ${showSaved ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'}`}
         >
           {showSaved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           {showSaved ? '已保存' : '保存设置'}
@@ -147,7 +155,7 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">姓名</label>
                 <input 
                   type="text" 
                   value={localSettings.personalInfo?.name || ''}
@@ -155,11 +163,11 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                     ...localSettings, 
                     personalInfo: { ...localSettings.personalInfo!, name: e.target.value }
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">职称/头衔</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">职称/头衔</label>
                 <input 
                   type="text" 
                   value={localSettings.personalInfo?.title || ''}
@@ -167,11 +175,11 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                     ...localSettings, 
                     personalInfo: { ...localSettings.personalInfo!, title: e.target.value }
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">任职学校</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">任职学校</label>
                 <input 
                   type="text" 
                   value={localSettings.personalInfo?.school || ''}
@@ -179,7 +187,7 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                     ...localSettings, 
                     personalInfo: { ...localSettings.personalInfo!, school: e.target.value }
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
               </div>
             </div>
@@ -198,14 +206,14 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
           <div className="p-6">
             <div className="space-y-3 mb-6">
               {localCourses.map(course => (
-                <div key={course.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg group">
+                <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl group hover:bg-white hover:shadow-sm transition-all">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">{course.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">({course.subject} · {course.grade} · {course.term})</span>
+                    <span className="text-sm font-semibold text-gray-900">{course.name}</span>
+                    <span className="text-xs text-gray-500 ml-2 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">{course.subject} · {course.grade} · {course.term}</span>
                   </div>
                   <button 
                     onClick={() => removeCourse(course.id)}
-                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-red-50 rounded-lg"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -213,42 +221,42 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
               ))}
             </div>
 
-            <div className="grid grid-cols-4 gap-3 mb-3">
+            <div className="grid grid-cols-4 gap-4 mb-3">
               <input 
                 type="text" 
                 placeholder="课程名称 (如: 三年级数学上册)"
                 value={newCourse.name}
                 onChange={e => setNewCourse({...newCourse, name: e.target.value})}
-                className="col-span-4 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-4 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all shadow-sm"
               />
               <input 
                 type="text" 
                 placeholder="学科 (如: 数学)"
                 value={newCourse.subject}
                 onChange={e => setNewCourse({...newCourse, subject: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all shadow-sm"
               />
               <input 
                 type="text" 
                 placeholder="年级 (如: 三年级)"
                 value={newCourse.grade}
                 onChange={e => setNewCourse({...newCourse, grade: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all shadow-sm"
               />
               <input 
                 type="text" 
                 placeholder="学期 (如: 2023-2024上)"
                 value={newCourse.term}
                 onChange={e => setNewCourse({...newCourse, term: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all shadow-sm"
               />
               <button 
                 onClick={addCourse}
                 disabled={!newCourse.name || !newCourse.subject || !newCourse.grade || !newCourse.term}
-                className="col-span-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="col-span-1 px-4 py-3 bg-blue-50 text-blue-600 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm hover:shadow"
               >
                 <Plus className="w-4 h-4" />
-                添加
+                添加课程
               </button>
             </div>
           </div>
@@ -292,24 +300,24 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                 placeholder="课节名称 (如: 第一节)"
                 value={newSlot.name}
                 onChange={e => setNewSlot({...newSlot, name: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <input 
                 type="time" 
                 value={newSlot.startTime}
                 onChange={e => setNewSlot({...newSlot, startTime: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <input 
                 type="time" 
                 value={newSlot.endTime}
                 onChange={e => setNewSlot({...newSlot, endTime: e.target.value})}
-                className="col-span-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="col-span-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <button 
                 onClick={addSlot}
                 disabled={!newSlot.name || !newSlot.startTime || !newSlot.endTime}
-                className="col-span-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="col-span-1 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 添加
@@ -336,7 +344,7 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                 <select 
                   value={localSettings.reminderHours}
                   onChange={(e) => setLocalSettings({...localSettings, reminderHours: Number(e.target.value)})}
-                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer"
                 >
                   <option value={12}>12 小时</option>
                   <option value={24}>24 小时</option>
@@ -386,7 +394,7 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                 </span>
                 <button 
                   onClick={handleSelectFolder}
-                  className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
                 >
                   选择文件夹
                 </button>
@@ -406,11 +414,11 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
               <div className="flex items-center gap-3">
                 <button 
                   onClick={onExportData}
-                  className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
                 >
                   导出配置
                 </button>
-                <label className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer">
+                <label className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer">
                   导入配置
                   <input 
                     type="file" 
@@ -471,12 +479,12 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addTask()}
                 placeholder="输入新的备课子项，如：准备实验器材"
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <button 
                 onClick={addTask}
                 disabled={!newTask.trim()}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 添加

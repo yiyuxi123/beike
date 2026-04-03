@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
-import { playDing } from '../utils/audio';
+import { playDing, playTick, playSuccess } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LessonCardProps {
@@ -25,6 +25,11 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
   const allTasksCompleted = totalTasksCount > 0 && completedTasksCount === totalTasksCount;
 
   const handleTaskToggle = (taskId: string) => {
+    const task = lesson.tasks.find(t => t.id === taskId);
+    if (task && !task.completed && settings.soundEnabled) {
+      playTick();
+    }
+
     const updatedTasks = lesson.tasks.map(t => 
       t.id === taskId ? { ...t, completed: !t.completed } : t
     );
@@ -144,6 +149,33 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
+  const openAttachment = async (att: Attachment) => {
+    if (!settings.archiveDirectoryHandle) {
+      alert('请先在设置中选择归档文件夹，才能打开文件。');
+      return;
+    }
+    try {
+      const options = { mode: 'read' as const };
+      if ((await settings.archiveDirectoryHandle.queryPermission(options)) !== 'granted') {
+        if ((await settings.archiveDirectoryHandle.requestPermission(options)) !== 'granted') {
+          return;
+        }
+      }
+      
+      const termHandle = await settings.archiveDirectoryHandle.getDirectoryHandle(course?.term || '未分类学期');
+      const courseHandle = await termHandle.getDirectoryHandle(course?.name || '未分类课程');
+      const safeTitle = lesson.title.replace(/[\\/:*?"<>|]/g, '_');
+      const lessonHandle = await courseHandle.getDirectoryHandle(safeTitle);
+      const fileHandle = await lessonHandle.getFileHandle(att.name);
+      const file = await fileHandle.getFile();
+      const url = URL.createObjectURL(file);
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error('Failed to open attachment', e);
+      alert('无法打开文件，可能文件已被移动或删除。');
+    }
+  };
+
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -197,6 +229,8 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       // Stop focus mode
       if (timerRef.current) clearInterval(timerRef.current);
       setIsFocusMode(false);
+      if (settings.soundEnabled) playSuccess();
+      
       // Add elapsed time to prepTime (convert seconds to minutes)
       const addedMinutes = Math.floor(focusTime / 60);
       if (addedMinutes > 0) {
@@ -209,6 +243,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     } else {
       // Start focus mode
       setIsFocusMode(true);
+      if (settings.soundEnabled) playTick();
       timerRef.current = window.setInterval(() => {
         setFocusTime(prev => prev + 1);
       }, 1000);
@@ -221,8 +256,15 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     return `${m}:${s}`;
   };
 
+  // Cleanup timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   return (
-    <div className={`bg-white rounded-xl border shadow-sm transition-all duration-200 relative ${lesson.status === 'completed' ? 'border-green-200 opacity-80' : 'border-gray-200 hover:shadow-md'}`}>
+    <div className={`bg-white rounded-3xl border shadow-sm transition-all duration-300 relative group hover:-translate-y-1 ${lesson.status === 'completed' ? 'border-green-200 opacity-80' : 'border-gray-100 hover:shadow-md hover:border-blue-200'}`}>
       
       {/* Celebration Animation */}
       <AnimatePresence>
@@ -238,16 +280,16 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       </AnimatePresence>
 
       <div 
-        className="p-4 flex items-center cursor-pointer select-none relative z-20"
+        className="p-5 flex items-center cursor-pointer select-none relative z-20"
         onClick={() => setExpanded(!expanded)}
       >
         {/* Big Checkmark */}
         <div 
-          className="mr-4 flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95 relative"
+          className="mr-5 flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95 relative"
           onClick={handleMainCheck}
         >
           {lesson.status === 'completed' ? (
-            <CheckCircle2 className="w-10 h-10 text-green-500" />
+            <CheckCircle2 className="w-12 h-12 text-green-500 drop-shadow-sm" />
           ) : (
             <Circle className={`w-10 h-10 ${allTasksCompleted ? 'text-blue-500 hover:text-green-500' : 'text-gray-300 hover:text-gray-400'}`} />
           )}
@@ -255,34 +297,40 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
         {/* Core Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className={`text-lg font-semibold truncate ${lesson.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className={`text-xl font-bold truncate tracking-tight ${lesson.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-blue-600 transition-colors'}`}>
               {lesson.title}
             </h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor()}`}>
+            <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${getStatusColor()}`}>
               {getStatusText()}
             </span>
           </div>
           
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 font-medium">
+              <Clock className="w-4 h-4 text-gray-400" />
               <span>{formatDate(lesson.classTime)}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <CheckSquare className="w-4 h-4" />
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${allTasksCompleted ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100'}`}>
+              <CheckSquare className={`w-4 h-4 ${allTasksCompleted ? 'text-green-500' : 'text-gray-400'}`} />
               <span>{completedTasksCount}/{totalTasksCount} 项</span>
             </div>
             {lesson.attachments.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Paperclip className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 font-medium">
+                <Paperclip className="w-4 h-4 text-gray-400" />
                 <span>{lesson.attachments.length} 个附件</span>
               </div>
             )}
-            {(lesson.prepTime || 0) > 0 && (
-              <div className="flex items-center gap-1">
-                <Target className="w-4 h-4" />
+            {(lesson.prepTime || 0) > 0 && !isFocusMode && (
+              <div className="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 text-orange-700 font-medium">
+                <Target className="w-4 h-4 text-orange-500" />
                 <span>已专注 {lesson.prepTime} 分钟</span>
+              </div>
+            )}
+            {isFocusMode && (
+              <div className="flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 text-red-700 font-medium animate-pulse">
+                <Target className="w-4 h-4 text-red-500" />
+                <span>专注中 {formatFocusTime(focusTime)}</span>
               </div>
             )}
           </div>
@@ -311,12 +359,12 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-t border-gray-100"
           >
-            <div className="p-4 bg-gray-50/50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 bg-gray-50/80 rounded-b-3xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Checklist & Goal */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                       <Target className="w-4 h-4 text-blue-500" />
                       备课目标
                     </h4>
@@ -324,27 +372,27 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                       value={lesson.prepGoal || ''}
                       onChange={handleGoalChange}
                       placeholder="输入本节课的教学目标、重难点等..."
-                      className="w-full text-sm p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24 bg-white"
+                      className="w-full text-sm p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-28 bg-white shadow-sm transition-shadow hover:shadow"
                     />
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
                       <span>备课清单</span>
-                      <span className="text-xs text-gray-500 font-normal">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
+                      <span className="text-xs text-gray-500 font-normal bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
                     </h4>
-                    <div className="space-y-2 mb-3">
+                    <div className="space-y-2.5 mb-4">
                       {lesson.tasks.map(task => (
                         <div 
                           key={task.id} 
-                          className="flex items-start justify-between gap-2 cursor-pointer group p-1.5 -mx-1.5 rounded hover:bg-white transition-colors"
+                          className="flex items-start justify-between gap-3 cursor-pointer group p-2.5 -mx-2.5 rounded-xl hover:bg-white transition-all hover:shadow-sm"
                           onClick={(e) => { e.stopPropagation(); handleTaskToggle(task.id); }}
                         >
-                          <div className="flex items-start gap-2 flex-1">
+                          <div className="flex items-start gap-3 flex-1">
                             <div className="mt-0.5 flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors">
                               {task.completed ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5" />}
                             </div>
-                            <span className={`text-sm ${task.completed ? 'text-gray-400 line-through' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                            <span className={`text-sm font-medium ${task.completed ? 'text-gray-400 line-through' : 'text-gray-700 group-hover:text-gray-900'}`}>
                               {task.title}
                             </span>
                           </div>
@@ -378,23 +426,62 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                   </div>
                 </div>
 
-                {/* Attachments & Actions */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">课件与附件</h4>
-                  {lesson.attachments.length > 0 ? (
-                    <div className="space-y-2 mb-4">
-                      {lesson.attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-lg text-sm hover:border-blue-300 cursor-pointer transition-colors">
-                          <Paperclip className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-700 truncate">{att.name}</span>
+                {/* Focus Timer Display */}
+                <AnimatePresence>
+                  {isFocusMode && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mb-8 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-100 shadow-inner flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-orange-200">
+                          <motion.div 
+                            className="h-full bg-orange-500"
+                            animate={{ width: ['0%', '100%'] }}
+                            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                          />
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-400 mb-4 italic">暂无附件</div>
+                        <h4 className="text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                          <Target className="w-4 h-4" />
+                          专注备课中
+                        </h4>
+                        <div className="text-5xl font-mono font-bold text-orange-600 tracking-wider mb-4 drop-shadow-sm">
+                          {formatFocusTime(focusTime)}
+                        </div>
+                        <p className="text-xs text-orange-600/80 font-medium">保持专注，高效完成备课任务</p>
+                      </div>
+                    </motion.div>
                   )}
+                </AnimatePresence>
+
+                  {/* Attachments & Actions */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                      <Paperclip className="w-4 h-4 text-blue-500" />
+                      课件与附件
+                    </h4>
+                    {lesson.attachments.length > 0 ? (
+                      <div className="space-y-2.5 mb-6">
+                        {lesson.attachments.map(att => (
+                          <div 
+                            key={att.id} 
+                            onClick={() => openAttachment(att)}
+                            className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl text-sm hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all group"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                              <Paperclip className="w-5 h-5 text-blue-500" />
+                            </div>
+                            <span className="text-gray-700 font-medium truncate flex-1">{att.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 mb-6 bg-white border border-gray-200 border-dashed rounded-xl p-6 text-center shadow-sm">暂无附件</div>
+                    )}
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <input 
                       type="file" 
                       multiple 
@@ -404,7 +491,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     />
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 py-2 px-3 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 px-4 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm hover:shadow flex items-center justify-center gap-2"
                     >
                       <Upload className="w-4 h-4" />
                       上传附件
@@ -412,7 +499,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     {lesson.status !== 'completed' && (
                       <button 
                         onClick={toggleFocusMode}
-                        className={`flex-1 py-2 px-3 border rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`flex-1 py-2.5 px-4 border rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 ${
                           isFocusMode 
                             ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100' 
                             : 'bg-blue-50 border-blue-100 text-blue-700 hover:bg-blue-100'
@@ -421,7 +508,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         {isFocusMode ? (
                           <>
                             <Square className="w-4 h-4 fill-current" />
-                            结束专注 ({formatFocusTime(focusTime)})
+                            结束专注
                           </>
                         ) : (
                           <>
@@ -437,17 +524,20 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
               {/* Post-class reflection if completed */}
               {lesson.status === 'completed' && new Date(lesson.classTime) < new Date() && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">教学反思</h4>
+                <div className="mt-8 pt-6 border-t border-gray-200/60">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    教学反思
+                  </h4>
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 rounded-full border border-green-200 bg-green-50 text-green-700 text-sm hover:bg-green-100 transition-colors">
+                    <button className="flex-1 py-2.5 rounded-xl border border-green-200 bg-green-50 text-green-700 text-sm font-semibold hover:bg-green-100 transition-all shadow-sm hover:shadow">
                       非常满意
                     </button>
-                    <button className="px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-700 text-sm hover:bg-gray-50 transition-colors">
+                    <button className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow">
                       效果一般
                     </button>
                     <button 
-                      className="px-4 py-2 rounded-full border border-orange-200 bg-orange-50 text-orange-700 text-sm hover:bg-orange-100 transition-colors"
+                      className="flex-1 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 text-sm font-semibold hover:bg-orange-100 transition-all shadow-sm hover:shadow"
                       onClick={(e) => {
                         e.stopPropagation();
                         onUpdate({ ...lesson, status: 'needs_revision' });
@@ -461,7 +551,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
               {/* Delete Lesson Button */}
               {onDelete && (
-                <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+                <div className="mt-8 pt-6 border-t border-gray-200/60 flex justify-end">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -469,7 +559,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         onDelete();
                       }
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all"
                   >
                     <Trash2 className="w-4 h-4" />
                     删除课时

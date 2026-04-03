@@ -15,7 +15,7 @@ export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCour
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
       <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-200">
           <CheckCircle className="w-5 h-5 text-white" />
         </div>
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">备课印记</h1>
@@ -56,13 +56,13 @@ export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCour
               <button
                 key={course.id}
                 onClick={() => onSelectCourse(course.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
                   activeTab === 'course' && selectedCourseId === course.id
-                  ? 'bg-blue-50 text-blue-700 font-medium' 
+                  ? 'bg-blue-50 text-blue-700 font-medium shadow-sm shadow-blue-100/50' 
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
-                <BookOpen className={`w-4 h-4 ${activeTab === 'course' && selectedCourseId === course.id ? 'text-blue-600' : 'text-gray-400'}`} />
+                <BookOpen className={`w-4 h-4 transition-colors ${activeTab === 'course' && selectedCourseId === course.id ? 'text-blue-600' : 'text-gray-400'}`} />
                 <span className="truncate">{course.name}</span>
               </button>
             ))}
@@ -70,14 +70,14 @@ export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCour
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
         {settings?.personalInfo && (
-          <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold flex-shrink-0">
+          <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-bold flex-shrink-0 shadow-sm border border-blue-100">
               {settings.personalInfo.name.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">{settings.personalInfo.name}</div>
+              <div className="text-sm font-semibold text-gray-900 truncate">{settings.personalInfo.name}</div>
               <div className="text-xs text-gray-500 truncate">{settings.personalInfo.school}</div>
             </div>
           </div>
@@ -97,14 +97,14 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
         active 
-          ? 'bg-blue-50 text-blue-700' 
+          ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/50' 
           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
       }`}
     >
       {React.cloneElement(icon as React.ReactElement, { 
-        className: `w-5 h-5 ${active ? 'text-blue-600' : 'text-gray-400'}` 
+        className: `w-5 h-5 transition-colors ${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` 
       })}
       {label}
     </button>
