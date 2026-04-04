@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
 import LessonCard from './LessonCard';
-import { BookOpen, Plus, X } from 'lucide-react';
+import { BookOpen, Plus, X, Clock } from 'lucide-react';
 
 interface CourseDetailProps {
   course: Course;

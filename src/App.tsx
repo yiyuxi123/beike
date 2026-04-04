@@ -64,8 +64,8 @@ export default function App() {
         const handle = await getDirectoryHandle();
         if (handle) {
           // Verify permission
-          const options = { mode: 'readwrite' as FileSystemPermissionMode };
-          if ((await handle.queryPermission(options)) === 'granted') {
+          const options = { mode: 'readwrite' as any };
+          if ((await (handle as any).queryPermission(options)) === 'granted') {
             loadedSettings.archiveDirectoryHandle = handle;
           } else {
             // We might need to request permission later when user interacts

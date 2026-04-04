@@ -96,7 +96,11 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
     const duplicatedLessons: Lesson[] = dayLessons.map(lesson => {
       const originalTime = new Date(lesson.classTime);
       const newTime = new Date(targetD);
-      newTime.setHours(originalTime.getHours(), originalTime.getMinutes(), 0, 0);
+      if (!isNaN(originalTime.getTime())) {
+        newTime.setHours(originalTime.getHours(), originalTime.getMinutes(), 0, 0);
+      } else {
+        newTime.setHours(8, 0, 0, 0);
+      }
 
       return {
         ...lesson,

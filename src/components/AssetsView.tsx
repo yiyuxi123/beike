@@ -77,9 +77,9 @@ export default function AssetsView({ lessons, courses, settings, onDuplicate }: 
     if (!settings.archiveDirectoryHandle) return;
     setIsScanning(true);
     try {
-      const options = { mode: 'read' as FileSystemPermissionMode };
-      if ((await settings.archiveDirectoryHandle.queryPermission(options)) !== 'granted') {
-        if ((await settings.archiveDirectoryHandle.requestPermission(options)) !== 'granted') {
+      const options = { mode: 'read' as any };
+      if ((await (settings.archiveDirectoryHandle as any).queryPermission(options)) !== 'granted') {
+        if ((await (settings.archiveDirectoryHandle as any).requestPermission(options)) !== 'granted') {
           setIsScanning(false);
           return;
         }

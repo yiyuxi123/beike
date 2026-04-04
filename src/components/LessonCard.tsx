@@ -92,9 +92,9 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     if (settings.archiveDirectoryHandle) {
       try {
         // Request permission if needed
-        const options = { mode: 'readwrite' as const };
-        if ((await settings.archiveDirectoryHandle.queryPermission(options)) !== 'granted') {
-          await settings.archiveDirectoryHandle.requestPermission(options);
+        const options = { mode: 'readwrite' as any };
+        if ((await (settings.archiveDirectoryHandle as any).queryPermission(options)) !== 'granted') {
+          await (settings.archiveDirectoryHandle as any).requestPermission(options);
         }
 
         // Create directory structure: Term / Course / Lesson
@@ -155,9 +155,9 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       return;
     }
     try {
-      const options = { mode: 'read' as const };
-      if ((await settings.archiveDirectoryHandle.queryPermission(options)) !== 'granted') {
-        if ((await settings.archiveDirectoryHandle.requestPermission(options)) !== 'granted') {
+      const options = { mode: 'read' as any };
+      if ((await (settings.archiveDirectoryHandle as any).queryPermission(options)) !== 'granted') {
+        if ((await (settings.archiveDirectoryHandle as any).requestPermission(options)) !== 'granted') {
           return;
         }
       }

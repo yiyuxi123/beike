@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lesson, Course, UserSettings } from '../types';
-import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Circle, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Circle, Plus, X, Clock } from 'lucide-react';
 import { formatTimeUntil } from '../utils/dateUtils';
 
 interface CalendarViewProps {
@@ -56,12 +56,14 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
     e.stopPropagation();
     setSelectedLesson(lesson);
     const d = new Date(lesson.classTime);
-    const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    const timeStr = !isNaN(d.getTime()) 
+      ? `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+      : settings.timetableSlots?.[0]?.startTime || '08:00';
     const isSpecial = settings.timetableSlots && settings.timetableSlots.length > 0 && !settings.timetableSlots.some(slot => slot.startTime === timeStr);
     
     setLessonFormData({
-      courseId: lesson.courseId,
-      title: lesson.title,
+      courseId: lesson.courseId || '',
+      title: lesson.title || '',
       time: timeStr,
       isSpecialTime: !!isSpecial
     });
@@ -98,7 +100,10 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
     if (!selectedLesson || !lessonFormData.courseId || !lessonFormData.title || !lessonFormData.time) return;
 
     const [hours, minutes] = lessonFormData.time.split(':');
-    const classTime = new Date(selectedLesson.classTime);
+    let classTime = new Date(selectedLesson.classTime);
+    if (isNaN(classTime.getTime())) {
+      classTime = new Date(selectedDate || new Date());
+    }
     classTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
 
     onUpdateLesson({

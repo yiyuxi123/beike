@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, UserSettings } from '../types';
-import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen, Clock } from 'lucide-react';
+import { Bell, Volume2, ListTodo, Plus, Trash2, Save, CheckCircle2, FolderOpen, User, BookOpen, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { TimetableSlot } from '../types';
 import { storeDirectoryHandle } from '../utils/indexedDB';
 
@@ -80,6 +80,16 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
     if (window.confirm('确定要删除该课程吗？该课程下的所有课时记录也将被同步删除。')) {
       setLocalCourses(localCourses.filter(c => c.id !== id));
     }
+  };
+
+  const moveCourse = (index: number, direction: 'up' | 'down') => {
+    const newCourses = [...localCourses];
+    if (direction === 'up' && index > 0) {
+      [newCourses[index - 1], newCourses[index]] = [newCourses[index], newCourses[index - 1]];
+    } else if (direction === 'down' && index < newCourses.length - 1) {
+      [newCourses[index + 1], newCourses[index]] = [newCourses[index], newCourses[index + 1]];
+    }
+    setLocalCourses(newCourses);
   };
 
   const addSlot = () => {
@@ -205,18 +215,37 @@ export default function SettingsView({ settings, onUpdateSettings, courses, onUp
           </div>
           <div className="p-6">
             <div className="space-y-3 mb-6">
-              {localCourses.map(course => (
+              {localCourses.map((course, index) => (
                 <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl group hover:bg-white hover:shadow-sm transition-all">
                   <div>
                     <span className="text-sm font-semibold text-gray-900">{course.name}</span>
                     <span className="text-xs text-gray-500 ml-2 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">{course.subject} · {course.grade} · {course.term}</span>
                   </div>
-                  <button 
-                    onClick={() => removeCourse(course.id)}
-                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      onClick={() => moveCourse(index, 'up')}
+                      disabled={index === 0}
+                      className="text-gray-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                      title="上移"
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => moveCourse(index, 'down')}
+                      disabled={index === localCourses.length - 1}
+                      className="text-gray-400 hover:text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                      title="下移"
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => removeCourse(course.id)}
+                      className="text-gray-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg ml-1"
+                      title="删除"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
