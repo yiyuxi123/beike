@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing, playTick, playSuccess } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
+import { generatePrepGoal } from '../utils/ai';
 
 interface LessonCardProps {
   key?: string | number;
@@ -220,6 +221,81 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     });
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleAIGenerate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!course) {
+      alert('无法获取课程信息，请确保该课时已关联课程。');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const goal = await generatePrepGoal(course.name, lesson.title, course.grade);
+      onUpdate({
+        ...lesson,
+        prepGoal: goal
+      });
+    } catch (error) {
+      alert('AI 生成失败，请稍后重试。');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const html = `
+      <html>
+        <head>
+          <title>${lesson.title} - 教案</title>
+          <style>
+            body { font-family: system-ui, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; }
+            h1 { border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+            h2 { margin-top: 2rem; color: #444; border-left: 4px solid #3b82f6; padding-left: 0.5rem; }
+            .meta { color: #666; margin-bottom: 2rem; display: flex; gap: 2rem; background: #f9fafb; padding: 1rem; border-radius: 0.5rem; }
+            .task-list { list-style: none; padding: 0; }
+            .task-list li { margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+            .task-list li::before { content: '☐'; color: #999; font-size: 1.2rem; }
+            .task-list li.completed::before { content: '☑'; color: #10b981; font-size: 1.2rem; }
+            .task-list li.completed { color: #666; text-decoration: line-through; }
+            .content-box { white-space: pre-wrap; background: #fff; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+          </style>
+        </head>
+        <body>
+          <h1>${lesson.title}</h1>
+          <div class="meta">
+            <div><strong>课程：</strong> ${course?.name || '未知课程'} (${course?.grade || ''})</div>
+            <div><strong>时间：</strong> ${formatDate(lesson.classTime)}</div>
+            <div><strong>状态：</strong> ${getStatusText()}</div>
+          </div>
+          
+          <h2>教学目标</h2>
+          <div class="content-box">${lesson.prepGoal || '未填写'}</div>
+          
+          <h2>备课清单</h2>
+          <ul class="task-list">
+            ${lesson.tasks.map(t => `<li class="${t.completed ? 'completed' : ''}">${t.title}</li>`).join('')}
+          </ul>
+          
+          ${lesson.reflection ? `
+            <h2>教学反思</h2>
+            <div class="content-box">${lesson.reflection}</div>
+          ` : ''}
+          
+          <script>
+            window.onload = () => { window.print(); }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [focusTime, setFocusTime] = useState(0);
   const timerRef = useRef<number | null>(null);
@@ -344,8 +420,17 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
               {timeText}
             </div>
           )}
-          <div className="text-gray-400">
-            {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          <div className="flex items-center gap-2 text-gray-400">
+            <button 
+              onClick={(e) => { e.stopPropagation(); handlePrint(); }} 
+              className="p-1.5 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+              title="打印教案"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <div className="p-1.5">
+              {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </div>
           </div>
         </div>
       </div>
@@ -364,9 +449,19 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                 {/* Checklist & Goal */}
                 <div className="space-y-8">
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-blue-500" />
-                      备课目标
+                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-blue-500" />
+                        备课目标
+                      </div>
+                      <button 
+                        onClick={handleAIGenerate}
+                        disabled={isGenerating}
+                        className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isGenerating ? '生成中...' : 'AI 辅助生成'}
+                      </button>
                     </h4>
                     <textarea
                       value={lesson.prepGoal || ''}
