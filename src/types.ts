@@ -30,6 +30,7 @@ export type Lesson = {
   attachments: Attachment[];
   prepTime: number; // minutes
   prepGoal?: string; // 备课目标
+  reflection?: string; // 教学反思
 };
 
 export type TimetableSlot = {

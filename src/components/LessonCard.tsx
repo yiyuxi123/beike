@@ -529,6 +529,12 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                     教学反思
                   </h4>
+                  <textarea
+                    value={lesson.reflection || ''}
+                    onChange={(e) => onUpdate({ ...lesson, reflection: e.target.value })}
+                    placeholder="记录本节课的闪光点、不足与改进建议..."
+                    className="w-full text-sm px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24 mb-4"
+                  />
                   <div className="flex gap-3">
                     <button className="flex-1 py-2.5 rounded-xl border border-green-200 bg-green-50 text-green-700 text-sm font-semibold hover:bg-green-100 transition-all shadow-sm hover:shadow">
                       非常满意

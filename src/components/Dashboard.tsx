@@ -35,6 +35,15 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
     return Math.max(1, diffDays);
   }, [lessons]);
 
+  const upcomingLessons = useMemo(() => {
+    const now = new Date();
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return lessons.filter(l => {
+      const classTime = new Date(l.classTime);
+      return classTime >= now && classTime <= nextWeek && l.status !== 'completed';
+    }).sort((a, b) => new Date(a.classTime).getTime() - new Date(b.classTime).getTime()).slice(0, 5);
+  }, [lessons]);
+
   const greeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return '早安';
@@ -114,8 +123,41 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
         </div>
       )}
 
+      {/* Upcoming Lessons */}
+      {upcomingLessons.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-500" />
+            未来7天待备课
+          </h2>
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <div className="space-y-3">
+              {upcomingLessons.map(lesson => {
+                const course = courses.find(c => c.id === lesson.courseId);
+                const classTime = new Date(lesson.classTime);
+                const timeStr = `${classTime.getMonth() + 1}月${classTime.getDate()}日 ${classTime.getHours().toString().padStart(2, '0')}:${classTime.getMinutes().toString().padStart(2, '0')}`;
+                return (
+                  <div key={lesson.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-100 hover:bg-blue-50/50 hover:border-blue-100 transition-colors group">
+                    <div>
+                      <h4 className="font-medium text-gray-900 group-hover:text-blue-700 transition-colors">{lesson.title}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{course?.name} · {timeStr}</p>
+                    </div>
+                    <button 
+                      onClick={() => onSelectCourse(lesson.courseId)}
+                      className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors shadow-sm"
+                    >
+                      去备课
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Course Progress Overview */}
-      <div>
+      <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">课程进度</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {courses.map(course => {
@@ -156,6 +198,47 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Weekly Prep Time Chart */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">近7天备课时长</h2>
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+          <div className="flex items-end gap-2 h-48 mt-4">
+            {Array.from({ length: 7 }).map((_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - (6 - i));
+              const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+              
+              const dayLessons = completedLessons.filter(l => {
+                const ld = new Date(l.classTime);
+                return ld.getDate() === d.getDate() && ld.getMonth() === d.getMonth() && ld.getFullYear() === d.getFullYear();
+              });
+              
+              const totalPrepTime = dayLessons.reduce((acc, l) => acc + (l.prepTime || 0), 0);
+              const maxTime = Math.max(120, ...completedLessons.map(l => (l.prepTime || 0) * 2)); // default max 120 mins or higher
+              const heightPercentage = Math.min(100, (totalPrepTime / maxTime) * 100);
+
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                  <div className="w-full relative flex-1 flex items-end justify-center">
+                    <div 
+                      className="w-full max-w-[40px] bg-blue-100 rounded-t-lg group-hover:bg-blue-200 transition-colors relative"
+                      style={{ height: `${heightPercentage}%`, minHeight: totalPrepTime > 0 ? '4px' : '0' }}
+                    >
+                      {totalPrepTime > 0 && (
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          {totalPrepTime} 分钟
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500">{dateStr}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

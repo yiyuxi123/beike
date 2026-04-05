@@ -26,6 +26,7 @@ export default function AssetsView({ lessons, courses, settings, onDuplicate }: 
   const [isScanning, setIsScanning] = useState(false);
   const [activeTab, setActiveTab] = useState<'lessons' | 'files'>('files');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [previewFile, setPreviewFile] = useState<{ url: string; type: string; name: string } | null>(null);
 
   const completedLessons = lessons.filter(l => {
     if (l.status !== 'completed') return false;
@@ -107,7 +108,15 @@ export default function AssetsView({ lessons, courses, settings, onDuplicate }: 
     try {
       const file = await handle.getFile();
       const url = URL.createObjectURL(file);
-      window.open(url, '_blank');
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      
+      if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext || '')) {
+        setPreviewFile({ url, type: 'image', name: file.name });
+      } else if (['mp4', 'webm', 'mov'].includes(ext || '')) {
+        setPreviewFile({ url, type: 'video', name: file.name });
+      } else {
+        window.open(url, '_blank');
+      }
     } catch (e) {
       console.error("Failed to open file", e);
     }
@@ -341,6 +350,46 @@ export default function AssetsView({ lessons, courses, settings, onDuplicate }: 
           )}
         </div>
       )}
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={() => setPreviewFile(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-5xl w-full max-h-[90vh] flex flex-col bg-gray-900 rounded-2xl overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 bg-black/50 text-white absolute top-0 left-0 right-0 z-10">
+                <span className="font-medium truncate pr-4">{previewFile.name}</span>
+                <button 
+                  onClick={() => setPreviewFile(null)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto flex items-center justify-center p-4 min-h-[50vh]">
+                {previewFile.type === 'image' ? (
+                  <img src={previewFile.url} alt={previewFile.name} className="max-w-full max-h-[80vh] object-contain rounded-lg" />
+                ) : (
+                  <video src={previewFile.url} controls className="max-w-full max-h-[80vh] rounded-lg" autoPlay />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
