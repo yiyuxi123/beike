@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { mockCourses, mockLessons } from './data/mock';
 import { Course, Lesson, UserSettings } from './types';
 import Sidebar from './components/Sidebar';
@@ -240,6 +241,7 @@ export default function App() {
         courses={courses}
         onAddLesson={handleAddLesson}
       />
+      <Analytics />
     </div>
   );
 }
