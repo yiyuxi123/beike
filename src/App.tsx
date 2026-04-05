@@ -8,6 +8,8 @@ import CalendarView from './components/CalendarView';
 import AssetsView from './components/AssetsView';
 import SettingsView from './components/SettingsView';
 import ScheduleView from './components/ScheduleView';
+import GlobalSearch from './components/GlobalSearch';
+import QuickAddLessonModal from './components/QuickAddLessonModal';
 import { getDirectoryHandle } from './utils/indexedDB';
 
 const STORAGE_KEY = 'teacher-prep-data';
@@ -180,6 +182,20 @@ export default function App() {
     setActiveTab('course');
   };
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="flex h-screen bg-[#F8F9FA] text-gray-900 font-sans overflow-hidden">
       <Sidebar 
@@ -189,8 +205,10 @@ export default function App() {
         onSelectCourse={handleSelectCourse}
         selectedCourseId={selectedCourseId}
         settings={settings}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onQuickAdd={() => setIsQuickAddOpen(true)}
       />
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto p-8 relative">
         {activeTab === 'dashboard' && <Dashboard courses={courses} lessons={lessons} settings={settings} onSelectCourse={handleSelectCourse} />}
         {activeTab === 'schedule' && <ScheduleView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onAddMultipleLessons={handleAddMultipleLessons} onDeleteLesson={handleDeleteLesson} />}
         {activeTab === 'course' && selectedCourseId && (
@@ -207,6 +225,21 @@ export default function App() {
         {activeTab === 'assets' && <AssetsView lessons={lessons} courses={courses} settings={settings} onDuplicate={handleDuplicateLesson} />}
         {activeTab === 'settings' && <SettingsView settings={settings} onUpdateSettings={setSettings} courses={courses} onUpdateCourses={handleUpdateCourses} onImportData={handleImportData} onExportData={handleExportData} />}
       </main>
+
+      <GlobalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        courses={courses} 
+        lessons={lessons} 
+        onSelectCourse={handleSelectCourse} 
+      />
+
+      <QuickAddLessonModal
+        isOpen={isQuickAddOpen}
+        onClose={() => setIsQuickAddOpen(false)}
+        courses={courses}
+        onAddLesson={handleAddLesson}
+      />
     </div>
   );
 }

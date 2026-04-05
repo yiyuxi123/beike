@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Calendar, LayoutDashboard, Library, Settings, CheckCircle, CalendarDays } from 'lucide-react';
+import { BookOpen, Calendar, LayoutDashboard, Library, Settings, CheckCircle, CalendarDays, Search, Plus } from 'lucide-react';
 import { Course, UserSettings } from '../types';
 
 interface SidebarProps {
@@ -9,19 +9,37 @@ interface SidebarProps {
   onSelectCourse: (id: string) => void;
   selectedCourseId: string | null;
   settings?: UserSettings;
+  onOpenSearch?: () => void;
+  onQuickAdd?: () => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCourse, selectedCourseId, settings }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCourse, selectedCourseId, settings, onOpenSearch, onQuickAdd }: SidebarProps) {
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-200">
-          <CheckCircle className="w-5 h-5 text-white" />
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-200">
+            <CheckCircle className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">备课印记</h1>
         </div>
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">备课印记</h1>
+        {onOpenSearch && (
+          <button onClick={onOpenSearch} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="全局搜索 (Cmd/Ctrl + K)">
+            <Search className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <div className="px-4 pb-6 flex-1 overflow-y-auto">
+        {onQuickAdd && (
+          <button 
+            onClick={onQuickAdd}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors mb-6 shadow-sm shadow-blue-200"
+          >
+            <Plus className="w-4 h-4" />
+            快速添加课时
+          </button>
+        )}
         <div className="space-y-1 mb-8">
           <NavItem 
             icon={<LayoutDashboard className="w-5 h-5" />} 

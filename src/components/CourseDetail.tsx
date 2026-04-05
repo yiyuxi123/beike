@@ -18,6 +18,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState(settings.timetableSlots?.[0]?.startTime || '08:00');
   const [isSpecialTime, setIsSpecialTime] = useState(false);
+  const [newLessonType, setNewLessonType] = useState<Lesson['lessonType']>('新授课');
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalCount = lessons.length;
@@ -44,7 +45,8 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
         completed: false
       })),
       attachments: [],
-      prepTime: 0
+      prepTime: 0,
+      lessonType: newLessonType
     });
     
     setIsModalOpen(false);
@@ -52,6 +54,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
     setNewDate(new Date().toISOString().split('T')[0]);
     setNewTime(settings.timetableSlots?.[0]?.startTime || '08:00');
     setIsSpecialTime(false);
+    setNewLessonType('新授课');
   };
 
   return (
@@ -200,6 +203,21 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
                       />
                     </div>
                   )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">课型</label>
+                  <select
+                    value={newLessonType}
+                    onChange={e => setNewLessonType(e.target.value as Lesson['lessonType'])}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm bg-white"
+                  >
+                    <option value="新授课">新授课</option>
+                    <option value="复习课">复习课</option>
+                    <option value="讲评课">讲评课</option>
+                    <option value="实验课">实验课</option>
+                    <option value="公开课">公开课</option>
+                    <option value="其他">其他</option>
+                  </select>
                 </div>
               </div>
               <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">

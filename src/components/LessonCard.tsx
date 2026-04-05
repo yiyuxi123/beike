@@ -18,6 +18,7 @@ interface LessonCardProps {
 export default function LessonCard({ lesson, course, settings, onUpdate, onDelete }: LessonCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isFullscreenFocus, setIsFullscreenFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { text: timeText, isUrgent } = formatTimeUntil(lesson.classTime, settings.reminderHours);
 
@@ -341,7 +342,51 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
   }, []);
 
   return (
-    <div className={`bg-white rounded-3xl border shadow-sm transition-all duration-300 relative group hover:-translate-y-1 ${lesson.status === 'completed' ? 'border-green-200 opacity-80' : 'border-gray-100 hover:shadow-md hover:border-blue-200'}`}>
+    <>
+      {/* Fullscreen Focus Mode Overlay */}
+      <AnimatePresence>
+        {isFullscreenFocus && isFocusMode && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center text-white"
+          >
+            <div className="absolute top-8 right-8">
+              <button 
+                onClick={() => setIsFullscreenFocus(false)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-sm font-medium backdrop-blur-sm"
+              >
+                退出全屏
+              </button>
+            </div>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-center"
+            >
+              <h2 className="text-3xl font-bold text-white/80 mb-4">{lesson.title}</h2>
+              <div className="text-[12rem] font-mono font-bold tracking-wider leading-none mb-8 text-orange-400 drop-shadow-[0_0_30px_rgba(251,146,60,0.3)]">
+                {formatFocusTime(focusTime)}
+              </div>
+              <p className="text-xl text-white/50 mb-12">保持专注，高效完成备课任务</p>
+              
+              <button 
+                onClick={() => {
+                  setIsFullscreenFocus(false);
+                  toggleFocusMode();
+                }}
+                className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-lg font-bold transition-all hover:scale-105 shadow-[0_0_20px_rgba(249,115,22,0.4)]"
+              >
+                结束专注
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`bg-white rounded-3xl border shadow-sm transition-all duration-300 relative group hover:-translate-y-1 ${lesson.status === 'completed' ? 'border-green-200 opacity-80' : 'border-gray-100 hover:shadow-md hover:border-blue-200'}`}>
       
       {/* Celebration Animation */}
       <AnimatePresence>
@@ -563,7 +608,15 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         <div className="text-5xl font-mono font-bold text-orange-600 tracking-wider mb-4 drop-shadow-sm">
                           {formatFocusTime(focusTime)}
                         </div>
-                        <p className="text-xs text-orange-600/80 font-medium">保持专注，高效完成备课任务</p>
+                        <div className="flex items-center gap-4">
+                          <p className="text-xs text-orange-600/80 font-medium">保持专注，高效完成备课任务</p>
+                          <button 
+                            onClick={() => setIsFullscreenFocus(true)}
+                            className="text-xs px-3 py-1.5 bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg transition-colors font-medium"
+                          >
+                            全屏模式
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -690,5 +743,6 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

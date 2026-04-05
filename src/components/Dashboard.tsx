@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
-import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { formatTimeUntil } from '../utils/dateUtils';
+import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, ArrowRight, BookOpen, TrendingUp } from 'lucide-react';
+import { formatTimeUntil, formatDate } from '../utils/dateUtils';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface DashboardProps {
   courses: Course[];
@@ -43,6 +44,31 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
       return classTime >= now && classTime <= nextWeek && l.status !== 'completed';
     }).sort((a, b) => new Date(a.classTime).getTime() - new Date(b.classTime).getTime()).slice(0, 5);
   }, [lessons]);
+
+  const chartData = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+      
+      const dayLessons = completedLessons.filter(l => {
+        const ld = new Date(l.classTime);
+        return ld.getDate() === d.getDate() && ld.getMonth() === d.getMonth() && ld.getFullYear() === d.getFullYear();
+      });
+      
+      const prepTime = dayLessons.reduce((acc, l) => acc + (l.prepTime || 0), 0);
+      return { name: dateStr, prepTime };
+    });
+  }, [completedLessons]);
+
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+  const pieData = useMemo(() => {
+    return courses.map(course => {
+      const count = lessons.filter(l => l.courseId === course.id).length;
+      return { name: course.name, value: count };
+    }).filter(d => d.value > 0);
+  }, [courses, lessons]);
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -201,43 +227,60 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
         </div>
       </div>
 
-      {/* Weekly Prep Time Chart */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">近7天备课时长</h2>
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-          <div className="flex items-end gap-2 h-48 mt-4">
-            {Array.from({ length: 7 }).map((_, i) => {
-              const d = new Date();
-              d.setDate(d.getDate() - (6 - i));
-              const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-              
-              const dayLessons = completedLessons.filter(l => {
-                const ld = new Date(l.classTime);
-                return ld.getDate() === d.getDate() && ld.getMonth() === d.getMonth() && ld.getFullYear() === d.getFullYear();
-              });
-              
-              const totalPrepTime = dayLessons.reduce((acc, l) => acc + (l.prepTime || 0), 0);
-              const maxTime = Math.max(120, ...completedLessons.map(l => (l.prepTime || 0) * 2)); // default max 120 mins or higher
-              const heightPercentage = Math.min(100, (totalPrepTime / maxTime) * 100);
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">近7天备课时长 (分钟)</h2>
+          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                <Tooltip 
+                  cursor={{ fill: '#f3f4f6' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="prepTime" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div className="w-full relative flex-1 flex items-end justify-center">
-                    <div 
-                      className="w-full max-w-[40px] bg-blue-100 rounded-t-lg group-hover:bg-blue-200 transition-colors relative"
-                      style={{ height: `${heightPercentage}%`, minHeight: totalPrepTime > 0 ? '4px' : '0' }}
-                    >
-                      {totalPrepTime > 0 && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          {totalPrepTime} 分钟
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500">{dateStr}</span>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">课时分布</h2>
+          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-80 flex flex-col items-center justify-center">
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-gray-400 text-sm">暂无数据</div>
+            )}
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              {pieData.map((entry, index) => (
+                <div key={entry.name} className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <span className="truncate max-w-[80px]" title={entry.name}>{entry.name}</span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </div>
