@@ -20,12 +20,15 @@ export type Attachment = {
 
 export type LessonStatus = 'not_started' | 'in_progress' | 'completed' | 'needs_revision';
 
+export type LessonType = '新授课' | '复习课' | '讲评课' | '实验课' | '公开课' | '考试' | '活动' | '其他';
+
 export type Lesson = {
   id: string;
   courseId: string;
   title: string;
   classTime: string; // ISO string
   status: LessonStatus;
+  lessonType?: LessonType;
   tasks: Task[];
   attachments: Attachment[];
   prepTime: number; // minutes

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
-import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X, Copy, Download } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ScheduleViewProps {
@@ -118,6 +118,37 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
     alert('课表已成功复用！');
   };
 
+  const handleExportCSV = () => {
+    const headers = ['日期', '时间', '课程', '年级', '课时标题', '课型', '状态'];
+    const rows = lessons.map(l => {
+      const course = courses.find(c => c.id === l.courseId);
+      const d = new Date(l.classTime);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const statusStr = l.status === 'completed' ? '已完成' : l.status === 'in_progress' ? '备课中' : l.status === 'needs_revision' ? '待优化' : '未开始';
+      
+      return [
+        dateStr,
+        timeStr,
+        course?.name || '-',
+        course?.grade || '-',
+        l.title,
+        l.lessonType || '新授课',
+        statusStr
+      ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
+    });
+    
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n'); // Add BOM for Excel UTF-8
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `课表导出_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const dayNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
   return (
@@ -128,6 +159,13 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
           <p className="text-gray-500 mt-2">集中管理每日课表与时间段</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            导出课表
+          </button>
           {dayLessons.length > 0 && (
             <button 
               onClick={() => setIsDuplicateModalOpen(true)}

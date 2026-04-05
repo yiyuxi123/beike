@@ -181,15 +181,16 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
     
-    const newTask: Task = {
-      id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      title: newTaskTitle.trim(),
+    const titles = newTaskTitle.split(/[,，、]/).map(t => t.trim()).filter(t => t);
+    const newTasks: Task[] = titles.map((title, index) => ({
+      id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+      title,
       completed: false
-    };
+    }));
     
     onUpdate({
       ...lesson,
-      tasks: [...lesson.tasks, newTask],
+      tasks: [...lesson.tasks, ...newTasks],
       status: lesson.status === 'completed' ? 'in_progress' : lesson.status
     });
     setNewTaskTitle('');
@@ -380,6 +381,11 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
             <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${getStatusColor()}`}>
               {getStatusText()}
             </span>
+            {lesson.lessonType && (
+              <span className="text-xs px-2.5 py-1 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 font-medium">
+                {lesson.lessonType}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -445,6 +451,18 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
             className="overflow-hidden border-t border-gray-100"
           >
             <div className="p-6 bg-gray-50/80 rounded-b-3xl">
+              <div className="flex items-center gap-4 mb-6">
+                <label className="text-sm font-semibold text-gray-700">课型：</label>
+                <select
+                  value={lesson.lessonType || '新授课'}
+                  onChange={(e) => onUpdate({ ...lesson, lessonType: e.target.value as any })}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500"
+                >
+                  {['新授课', '复习课', '讲评课', '实验课', '公开课', '考试', '活动', '其他'].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Checklist & Goal */}
                 <div className="space-y-8">
@@ -507,7 +525,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         type="text"
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="添加新任务..."
+                        placeholder="添加新任务 (支持逗号批量添加)..."
                         className="flex-1 text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       <button 

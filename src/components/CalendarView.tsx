@@ -190,6 +190,11 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                           <Circle className="w-3.5 h-3.5 flex-shrink-0" />
                         )}
                         <span className="truncate font-medium">{lesson.title}</span>
+                        {lesson.lessonType && (
+                          <span className="flex-shrink-0 text-[10px] px-1 py-0.5 rounded bg-white/50 border border-current opacity-80">
+                            {lesson.lessonType.substring(0, 1)}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
