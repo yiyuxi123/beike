@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
 import LessonCard from './LessonCard';
-import { BookOpen, Plus, X, Clock } from 'lucide-react';
+import { BookOpen, Plus, X, Clock, Archive } from 'lucide-react';
 
 interface CourseDetailProps {
   course: Course;
@@ -10,9 +10,10 @@ interface CourseDetailProps {
   onUpdateLesson: (lesson: Lesson) => void;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
   onDeleteLesson: (id: string) => void;
+  onUpdateCourse: (course: Course) => void;
 }
 
-export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson, onDeleteLesson }: CourseDetailProps) {
+export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson, onDeleteLesson, onUpdateCourse }: CourseDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
@@ -124,6 +125,18 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
             <p className="text-gray-500 mt-3 text-lg">{course.term}</p>
           </div>
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                if (window.confirm(`确定要${course.isArchived ? '取消归档' : '归档'}课程 "${course.name}" 吗？`)) {
+                  onUpdateCourse({ ...course, isArchived: !course.isArchived });
+                }
+              }}
+              className={`flex items-center gap-2 px-4 py-3 bg-white border rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 ${course.isArchived ? 'text-blue-600 border-blue-200 hover:bg-blue-50' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              title={course.isArchived ? "取消归档" : "归档课程"}
+            >
+              <Archive className="w-4 h-4" />
+              {course.isArchived ? '取消归档' : '归档'}
+            </button>
             <button 
               onClick={handleExportCourse}
               className="flex items-center gap-2 px-4 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"

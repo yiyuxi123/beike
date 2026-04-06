@@ -144,6 +144,10 @@ export default function App() {
     }
   };
 
+  const handleUpdateCourse = (updatedCourse: Course) => {
+    setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+  };
+
   const handleUpdateLesson = (updatedLesson: Lesson) => {
     setLessons(lessons.map(l => l.id === updatedLesson.id ? updatedLesson : l));
   };
@@ -219,6 +223,7 @@ export default function App() {
             onUpdateLesson={handleUpdateLesson}
             onAddLesson={handleAddLesson}
             onDeleteLesson={handleDeleteLesson}
+            onUpdateCourse={handleUpdateCourse}
           />
         )}
         {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onUpdateLesson={handleUpdateLesson} onDeleteLesson={handleDeleteLesson} />}

@@ -4,6 +4,7 @@ export type Course = {
   grade: string;
   subject: string;
   term: string;
+  isArchived?: boolean;
 };
 
 export type Task = {

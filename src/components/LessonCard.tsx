@@ -301,6 +301,8 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [focusTime, setFocusTime] = useState(0);
+  const [timerMode, setTimerMode] = useState<'stopwatch' | 'pomodoro'>('stopwatch');
+  const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
   const timerRef = useRef<number | null>(null);
 
   const toggleFocusMode = () => {
@@ -311,7 +313,14 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       if (settings.soundEnabled) playSuccess();
       
       // Add elapsed time to prepTime (convert seconds to minutes)
-      const addedMinutes = Math.floor(focusTime / 60);
+      let addedMinutes = 0;
+      if (timerMode === 'stopwatch') {
+        addedMinutes = Math.floor(focusTime / 60);
+      } else {
+        // For pomodoro, add the time that has elapsed
+        addedMinutes = pomodoroMinutes - Math.ceil(focusTime / 60);
+      }
+      
       if (addedMinutes > 0) {
         onUpdate({
           ...lesson,
@@ -323,8 +332,34 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       // Start focus mode
       setIsFocusMode(true);
       if (settings.soundEnabled) playTick();
+      
+      if (timerMode === 'pomodoro') {
+        setFocusTime(pomodoroMinutes * 60);
+      } else {
+        setFocusTime(0);
+      }
+      
       timerRef.current = window.setInterval(() => {
-        setFocusTime(prev => prev + 1);
+        setFocusTime(prev => {
+          if (timerMode === 'pomodoro') {
+            if (prev <= 1) {
+              // Pomodoro finished
+              if (timerRef.current) clearInterval(timerRef.current);
+              setIsFocusMode(false);
+              setIsFullscreenFocus(false);
+              if (settings.soundEnabled) playSuccess();
+              onUpdate({
+                ...lesson,
+                prepTime: (lesson.prepTime || 0) + pomodoroMinutes
+              });
+              alert('番茄钟完成！休息一下吧。');
+              return 0;
+            }
+            return prev - 1;
+          } else {
+            return prev + 1;
+          }
+        });
       }, 1000);
     }
   };
@@ -658,7 +693,7 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         </div>
                         <h4 className="text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
                           <Target className="w-4 h-4" />
-                          专注备课中
+                          {timerMode === 'pomodoro' ? '番茄钟倒计时' : '专注备课中'}
                         </h4>
                         <div className="text-5xl font-mono font-bold text-orange-600 tracking-wider mb-4 drop-shadow-sm">
                           {formatFocusTime(focusTime)}
@@ -676,6 +711,37 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Focus Settings (Only shown when not focusing) */}
+                {!isFocusMode && (
+                  <div className="mb-8 flex items-center gap-4 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm font-medium text-orange-800">专注模式</span>
+                    </div>
+                    <select
+                      value={timerMode}
+                      onChange={(e) => setTimerMode(e.target.value as 'stopwatch' | 'pomodoro')}
+                      className="text-sm border-orange-200 rounded-lg text-orange-800 bg-white focus:ring-orange-500 focus:border-orange-500 py-1.5"
+                    >
+                      <option value="stopwatch">正计时</option>
+                      <option value="pomodoro">番茄钟 (倒计时)</option>
+                    </select>
+                    {timerMode === 'pomodoro' && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="120"
+                          value={pomodoroMinutes}
+                          onChange={(e) => setPomodoroMinutes(parseInt(e.target.value) || 25)}
+                          className="w-16 text-sm border-orange-200 rounded-lg text-orange-800 bg-white focus:ring-orange-500 focus:border-orange-500 py-1.5"
+                        />
+                        <span className="text-sm text-orange-800">分钟</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                   {/* Attachments & Actions */}
                   <div>

@@ -156,6 +156,26 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
               <div 
                 key={day} 
                 onClick={() => handleDayClick(day)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('bg-blue-50');
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove('bg-blue-50');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('bg-blue-50');
+                  const lessonId = e.dataTransfer.getData('lessonId');
+                  if (lessonId) {
+                    const lesson = lessons.find(l => l.id === lessonId);
+                    if (lesson) {
+                      const oldDate = new Date(lesson.classTime);
+                      const newDate = new Date(year, month, day, oldDate.getHours(), oldDate.getMinutes());
+                      onUpdateLesson({ ...lesson, classTime: newDate.toISOString() });
+                    }
+                  }
+                }}
                 className={`border-b border-r border-gray-100 p-3 transition-all hover:bg-blue-50/30 cursor-pointer group relative ${isToday ? 'bg-blue-50/10' : ''}`}
               >
                 <div className="flex justify-between items-start mb-2">
@@ -174,8 +194,17 @@ export default function CalendarView({ lessons, courses, settings, onAddLesson, 
                     return (
                       <div 
                         key={lesson.id} 
+                        draggable
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          e.dataTransfer.setData('lessonId', lesson.id);
+                          e.currentTarget.classList.add('opacity-50');
+                        }}
+                        onDragEnd={(e) => {
+                          e.currentTarget.classList.remove('opacity-50');
+                        }}
                         onClick={(e) => handleLessonClick(e, lesson)}
-                        className={`text-xs px-2.5 py-1.5 rounded-lg truncate flex items-center gap-1.5 border hover:shadow-sm transition-all hover:-translate-y-0.5 ${
+                        className={`text-xs px-2.5 py-1.5 rounded-lg truncate flex items-center gap-1.5 border hover:shadow-sm transition-all hover:-translate-y-0.5 cursor-grab active:cursor-grabbing ${
                           lesson.status === 'completed' ? 'bg-green-50 border-green-100 text-green-700' :
                           isUrgent ? 'bg-red-50 border-red-100 text-red-700' :
                           'bg-blue-50 border-blue-100 text-blue-700'

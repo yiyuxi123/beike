@@ -1,5 +1,5 @@
-import React from 'react';
-import { BookOpen, Calendar, LayoutDashboard, Library, Settings, CheckCircle, CalendarDays, Search, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, Calendar, LayoutDashboard, Library, Settings, CheckCircle, CalendarDays, Search, Plus, Archive, ChevronDown, ChevronRight } from 'lucide-react';
 import { Course, UserSettings } from '../types';
 
 interface SidebarProps {
@@ -14,6 +14,10 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCourse, selectedCourseId, settings, onOpenSearch, onQuickAdd }: SidebarProps) {
+  const [isArchivedOpen, setIsArchivedOpen] = useState(false);
+  const activeCourses = courses.filter(c => !c.isArchived);
+  const archivedCourses = courses.filter(c => c.isArchived);
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
       <div className="p-6 flex items-center justify-between">
@@ -67,10 +71,10 @@ export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCour
           />
         </div>
 
-        <div>
+        <div className="mb-6">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">我的课程</h2>
           <div className="space-y-1">
-            {courses.map(course => (
+            {activeCourses.map(course => (
               <button
                 key={course.id}
                 onClick={() => onSelectCourse(course.id)}
@@ -86,6 +90,40 @@ export default function Sidebar({ activeTab, setActiveTab, courses, onSelectCour
             ))}
           </div>
         </div>
+
+        {archivedCourses.length > 0 && (
+          <div>
+            <button 
+              onClick={() => setIsArchivedOpen(!isArchivedOpen)}
+              className="w-full flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-3 hover:text-gray-600 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Archive className="w-3.5 h-3.5" />
+                <span>归档课程</span>
+              </div>
+              {isArchivedOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            </button>
+            
+            {isArchivedOpen && (
+              <div className="space-y-1 mt-2">
+                {archivedCourses.map(course => (
+                  <button
+                    key={course.id}
+                    onClick={() => onSelectCourse(course.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${
+                      activeTab === 'course' && selectedCourseId === course.id
+                      ? 'bg-gray-100 text-gray-800 font-medium' 
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                    }`}
+                  >
+                    <Archive className={`w-4 h-4 transition-colors ${activeTab === 'course' && selectedCourseId === course.id ? 'text-gray-600' : 'text-gray-400'}`} />
+                    <span className="truncate">{course.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="p-4 border-t border-gray-100 bg-gray-50/50">
