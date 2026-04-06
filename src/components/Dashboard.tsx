@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
-import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, ArrowRight, BookOpen, TrendingUp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Calendar as CalendarIcon, ArrowRight, BookOpen, TrendingUp, Edit3 } from 'lucide-react';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -9,9 +9,18 @@ interface DashboardProps {
   lessons: Lesson[];
   settings: UserSettings;
   onSelectCourse: (courseId: string) => void;
+  onUpdateSettings: (settings: UserSettings) => void;
 }
 
-export default function Dashboard({ courses, lessons, settings, onSelectCourse }: DashboardProps) {
+export default function Dashboard({ courses, lessons, settings, onSelectCourse, onUpdateSettings }: DashboardProps) {
+  const [note, setNote] = useState(settings.quickNote || '');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  const handleSaveNote = () => {
+    setIsSavingNote(true);
+    onUpdateSettings({ ...settings, quickNote: note });
+    setTimeout(() => setIsSavingNote(false), 500);
+  };
   const urgentLessons = lessons.filter(l => {
     const { isUrgent } = formatTimeUntil(l.classTime, settings.reminderHours);
     return isUrgent && l.status !== 'completed';
@@ -228,7 +237,7 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <div className="lg:col-span-2">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">近7天备课时长 (分钟)</h2>
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-80">
@@ -281,6 +290,26 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse }
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Note */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Edit3 className="w-5 h-5 text-purple-500" />
+          备忘录
+        </h2>
+        <div className="bg-gradient-to-br from-purple-50/50 to-white border border-purple-100 rounded-3xl p-6 shadow-sm relative">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={handleSaveNote}
+            placeholder="在这里记录一些灵感、待办事项或备忘..."
+            className="w-full h-32 bg-transparent border-none resize-none focus:ring-0 text-gray-700 placeholder-gray-400"
+          />
+          <div className="absolute bottom-4 right-6 text-xs text-gray-400">
+            {isSavingNote ? '保存中...' : '自动保存'}
           </div>
         </div>
       </div>

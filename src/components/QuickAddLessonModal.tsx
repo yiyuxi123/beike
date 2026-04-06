@@ -28,7 +28,8 @@ export default function QuickAddLessonModal({ isOpen, onClose, courses, onAddLes
       status: 'not_started',
       tasks: [],
       attachments: [],
-      lessonType
+      lessonType,
+      prepTime: 0
     });
     
     setTitle('');

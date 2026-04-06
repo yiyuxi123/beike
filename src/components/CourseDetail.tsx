@@ -19,12 +19,20 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
   const [newTime, setNewTime] = useState(settings.timetableSlots?.[0]?.startTime || '08:00');
   const [isSpecialTime, setIsSpecialTime] = useState(false);
   const [newLessonType, setNewLessonType] = useState<Lesson['lessonType']>('新授课');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalCount = lessons.length;
   const percentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   const sortedLessons = [...lessons].sort((a, b) => new Date(a.classTime).getTime() - new Date(b.classTime).getTime());
+  
+  const filteredLessons = sortedLessons.filter(l => {
+    if (filter === 'all') return true;
+    if (filter === 'completed') return l.status === 'completed';
+    if (filter === 'pending') return l.status !== 'completed';
+    return true;
+  });
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +65,47 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
     setNewLessonType('新授课');
   };
 
+  const handleExportCourse = () => {
+    let md = `# ${course.name}\n\n`;
+    md += `**科目：** ${course.subject} | **年级：** ${course.grade} | **学期：** ${course.term}\n\n`;
+    md += `**备课进度：** ${completedCount} / ${totalCount} (${percentage}%)\n\n---\n\n`;
+
+    sortedLessons.forEach(lesson => {
+      md += `## ${lesson.title}\n\n`;
+      md += `- **时间：** ${new Date(lesson.classTime).toLocaleString()}\n`;
+      md += `- **课型：** ${lesson.lessonType || '新授课'}\n`;
+      md += `- **状态：** ${lesson.status === 'completed' ? '已完成' : lesson.status === 'in_progress' ? '备课中' : '未开始'}\n\n`;
+      
+      if (lesson.prepGoal) {
+        md += `### 教学目标\n\n${lesson.prepGoal}\n\n`;
+      }
+      
+      if (lesson.tasks.length > 0) {
+        md += `### 备课清单\n\n`;
+        lesson.tasks.forEach(task => {
+          md += `- [${task.completed ? 'x' : ' '}] ${task.title}\n`;
+        });
+        md += `\n`;
+      }
+
+      if (lesson.reflection) {
+        md += `### 教学反思\n\n${lesson.reflection}\n\n`;
+      }
+      
+      md += `---\n\n`;
+    });
+
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${course.name}备课计划.md`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-12 relative">
       {/* Course Header */}
@@ -74,13 +123,22 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
             <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{course.name}</h1>
             <p className="text-gray-500 mt-3 text-lg">{course.term}</p>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
-          >
-            <Plus className="w-4 h-4" />
-            添加课时
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleExportCourse}
+              className="flex items-center gap-2 px-4 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              title="导出课程计划 (Markdown)"
+            >
+              导出计划
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+            >
+              <Plus className="w-4 h-4" />
+              添加课时
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 relative z-10">
@@ -102,8 +160,28 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
       </div>
 
       {/* Lessons List */}
+      <div className="mb-6 flex items-center gap-2">
+        <button 
+          onClick={() => setFilter('all')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+        >
+          全部课时
+        </button>
+        <button 
+          onClick={() => setFilter('pending')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+        >
+          待备课
+        </button>
+        <button 
+          onClick={() => setFilter('completed')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+        >
+          已完成
+        </button>
+      </div>
       <div className="space-y-4">
-        {sortedLessons.map(lesson => (
+        {filteredLessons.map(lesson => (
           <LessonCard 
             key={lesson.id} 
             lesson={lesson} 
@@ -113,13 +191,15 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
             onDelete={() => onDeleteLesson(lesson.id)}
           />
         ))}
-        {sortedLessons.length === 0 && (
+        {filteredLessons.length === 0 && (
           <div className="text-center py-24 text-gray-500 bg-gradient-to-b from-gray-50/50 to-white rounded-[2rem] border border-gray-200 border-dashed">
             <div className="w-20 h-20 bg-white shadow-sm rounded-3xl flex items-center justify-center mx-auto mb-5 transform -rotate-3">
               <BookOpen className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">暂无课时</h3>
-            <p className="text-gray-500">点击右上角“添加课时”开始备课</p>
+            <p className="text-gray-500">
+              {filter === 'all' ? '点击右上角“添加课时”开始备课' : '没有符合当前筛选条件的课时'}
+            </p>
           </div>
         )}
       </div>

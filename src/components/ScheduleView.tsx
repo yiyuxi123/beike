@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
-import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X, Copy, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Plus, Coffee, Sun, Music, BookOpen, X, Copy, Download, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ScheduleViewProps {
@@ -160,8 +160,16 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
         </div>
         <div className="flex gap-3">
           <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm print:hidden"
+            title="打印课表"
+          >
+            <Printer className="w-4 h-4" />
+            打印
+          </button>
+          <button 
             onClick={handleExportCSV}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm print:hidden"
           >
             <Download className="w-4 h-4" />
             导出课表
@@ -169,7 +177,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
           {dayLessons.length > 0 && (
             <button 
               onClick={() => setIsDuplicateModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm print:hidden"
             >
               <Copy className="w-4 h-4" />
               复用本日课表
@@ -177,7 +185,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
           )}
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md print:hidden"
           >
             <Plus className="w-4 h-4" />
             添加排课
@@ -188,13 +196,13 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
       {/* Week Selector */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/80">
-          <button onClick={prevWeek} className="p-2 hover:bg-gray-200 rounded-xl transition-colors">
+          <button onClick={prevWeek} className="p-2 hover:bg-gray-200 rounded-xl transition-colors print:hidden">
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           <span className="font-semibold text-gray-900 text-lg">
             {weekDays[0].getFullYear()}年{weekDays[0].getMonth() + 1}月
           </span>
-          <button onClick={nextWeek} className="p-2 hover:bg-gray-200 rounded-xl transition-colors">
+          <button onClick={nextWeek} className="p-2 hover:bg-gray-200 rounded-xl transition-colors print:hidden">
             <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -256,7 +264,7 @@ export default function ScheduleView({ lessons, courses, settings, onAddLesson, 
                         <BookOpen className="w-4 h-4" />
                         {course?.name} <span className="text-gray-400 font-normal">({course?.grade})</span>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
                         <button 
                           onClick={() => {
                             const newTime = new Date(lesson.classTime);

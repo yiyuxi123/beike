@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles, Edit2, Eye, GripVertical } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing, playTick, playSuccess } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
 import { generatePrepGoal } from '../utils/ai';
+import Markdown from 'react-markdown';
 
 interface LessonCardProps {
   key?: string | number;
@@ -517,21 +518,45 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                         <Target className="w-4 h-4 text-blue-500" />
                         备课目标
                       </div>
-                      <button 
-                        onClick={handleAIGenerate}
-                        disabled={isGenerating}
-                        className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {isGenerating ? '生成中...' : 'AI 辅助生成'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={handleAIGenerate}
+                          disabled={isGenerating}
+                          className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {isGenerating ? '生成中...' : 'AI 辅助生成'}
+                        </button>
+                      </div>
                     </h4>
-                    <textarea
-                      value={lesson.prepGoal || ''}
-                      onChange={handleGoalChange}
-                      placeholder="输入本节课的教学目标、重难点等..."
-                      className="w-full text-sm p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-28 bg-white shadow-sm transition-shadow hover:shadow"
-                    />
+                    <div className="relative group">
+                      <textarea
+                        value={lesson.prepGoal || ''}
+                        onChange={handleGoalChange}
+                        placeholder="输入本节课的教学目标、重难点等 (支持 Markdown)..."
+                        className="w-full text-sm p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-32 bg-white shadow-sm transition-shadow hover:shadow"
+                      />
+                      {lesson.prepGoal && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const el = document.getElementById(`markdown-preview-${lesson.id}`);
+                              if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                            }}
+                            className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 shadow-sm"
+                            title="切换预览"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {lesson.prepGoal && (
+                      <div id={`markdown-preview-${lesson.id}`} className="hidden mt-2 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm prose prose-sm max-w-none">
+                        <Markdown>{lesson.prepGoal}</Markdown>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -540,13 +565,43 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                       <span className="text-xs text-gray-500 font-normal bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
                     </h4>
                     <div className="space-y-2.5 mb-4">
-                      {lesson.tasks.map(task => (
+                      {lesson.tasks.map((task, index) => (
                         <div 
                           key={task.id} 
-                          className="flex items-start justify-between gap-3 cursor-pointer group p-2.5 -mx-2.5 rounded-xl hover:bg-white transition-all hover:shadow-sm"
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', index.toString());
+                            e.currentTarget.classList.add('opacity-50');
+                          }}
+                          onDragEnd={(e) => {
+                            e.currentTarget.classList.remove('opacity-50');
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add('bg-blue-50');
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.classList.remove('bg-blue-50');
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('bg-blue-50');
+                            const dragIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                            if (dragIndex === index) return;
+                            
+                            const newTasks = [...lesson.tasks];
+                            const [draggedTask] = newTasks.splice(dragIndex, 1);
+                            newTasks.splice(index, 0, draggedTask);
+                            
+                            onUpdate({ ...lesson, tasks: newTasks });
+                          }}
+                          className="flex items-start justify-between gap-3 cursor-pointer group p-2.5 -mx-2.5 rounded-xl hover:bg-white transition-all hover:shadow-sm border border-transparent hover:border-gray-100"
                           onClick={(e) => { e.stopPropagation(); handleTaskToggle(task.id); }}
                         >
                           <div className="flex items-start gap-3 flex-1">
+                            <div className="mt-0.5 flex-shrink-0 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" title="拖动排序">
+                              <GripVertical className="w-5 h-5" />
+                            </div>
                             <div className="mt-0.5 flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors">
                               {task.completed ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5" />}
                             </div>
@@ -695,12 +750,34 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                     教学反思
                   </h4>
-                  <textarea
-                    value={lesson.reflection || ''}
-                    onChange={(e) => onUpdate({ ...lesson, reflection: e.target.value })}
-                    placeholder="记录本节课的闪光点、不足与改进建议..."
-                    className="w-full text-sm px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24 mb-4"
-                  />
+                  <div className="relative group mb-4">
+                    <textarea
+                      value={lesson.reflection || ''}
+                      onChange={(e) => onUpdate({ ...lesson, reflection: e.target.value })}
+                      placeholder="记录本节课的闪光点、不足与改进建议 (支持 Markdown)..."
+                      className="w-full text-sm px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24"
+                    />
+                    {lesson.reflection && (
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const el = document.getElementById(`markdown-preview-reflection-${lesson.id}`);
+                            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                          }}
+                          className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 shadow-sm"
+                          title="切换预览"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {lesson.reflection && (
+                    <div id={`markdown-preview-reflection-${lesson.id}`} className="hidden mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm prose prose-sm max-w-none">
+                      <Markdown>{lesson.reflection}</Markdown>
+                    </div>
+                  )}
                   <div className="flex gap-3">
                     <button className="flex-1 py-2.5 rounded-xl border border-green-200 bg-green-50 text-green-700 text-sm font-semibold hover:bg-green-100 transition-all shadow-sm hover:shadow">
                       非常满意

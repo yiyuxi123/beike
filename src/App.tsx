@@ -209,7 +209,7 @@ export default function App() {
         onQuickAdd={() => setIsQuickAddOpen(true)}
       />
       <main className="flex-1 overflow-y-auto p-8 relative">
-        {activeTab === 'dashboard' && <Dashboard courses={courses} lessons={lessons} settings={settings} onSelectCourse={handleSelectCourse} />}
+        {activeTab === 'dashboard' && <Dashboard courses={courses} lessons={lessons} settings={settings} onSelectCourse={handleSelectCourse} onUpdateSettings={setSettings} />}
         {activeTab === 'schedule' && <ScheduleView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onAddMultipleLessons={handleAddMultipleLessons} onDeleteLesson={handleDeleteLesson} />}
         {activeTab === 'course' && selectedCourseId && (
           <CourseDetail 

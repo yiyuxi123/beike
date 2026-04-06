@@ -56,4 +56,5 @@ export type UserSettings = {
     school: string;
     avatar?: string;
   };
+  quickNote?: string;
 };

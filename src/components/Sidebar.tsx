@@ -115,15 +115,15 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
         active 
           ? 'bg-blue-50 text-blue-700 shadow-sm shadow-blue-100/50' 
           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
       }`}
     >
-      {React.cloneElement(icon as React.ReactElement, { 
-        className: `w-5 h-5 transition-colors ${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` 
-      })}
+      <div className={`w-5 h-5 transition-colors ${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
+        {icon}
+      </div>
       {label}
     </button>
   );
