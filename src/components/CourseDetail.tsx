@@ -21,6 +21,8 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
   const [isSpecialTime, setIsSpecialTime] = useState(false);
   const [newLessonType, setNewLessonType] = useState<Lesson['lessonType']>('新授课');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
+  const [isBatchMode, setIsBatchMode] = useState(false);
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalCount = lessons.length;
@@ -34,6 +36,47 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
     if (filter === 'pending') return l.status !== 'completed';
     return true;
   });
+
+  const toggleSelection = (id: string) => {
+    const newSelection = new Set(selectedLessons);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedLessons(newSelection);
+  };
+
+  const selectAll = () => {
+    if (selectedLessons.size === filteredLessons.length) {
+      setSelectedLessons(new Set());
+    } else {
+      setSelectedLessons(new Set(filteredLessons.map(l => l.id)));
+    }
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedLessons.size === 0) return;
+    if (window.confirm(`确定要删除选中的 ${selectedLessons.size} 个课时吗？`)) {
+      selectedLessons.forEach(id => onDeleteLesson(id));
+      setSelectedLessons(new Set());
+      setIsBatchMode(false);
+    }
+  };
+
+  const handleBatchComplete = () => {
+    if (selectedLessons.size === 0) return;
+    if (window.confirm(`确定要将选中的 ${selectedLessons.size} 个课时标记为已完成吗？`)) {
+      selectedLessons.forEach(id => {
+        const lesson = lessons.find(l => l.id === id);
+        if (lesson) {
+          onUpdateLesson({ ...lesson, status: 'completed' });
+        }
+      });
+      setSelectedLessons(new Set());
+      setIsBatchMode(false);
+    }
+  };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,36 +216,94 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
       </div>
 
       {/* Lessons List */}
-      <div className="mb-6 flex items-center gap-2">
-        <button 
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-        >
-          全部课时
-        </button>
-        <button 
-          onClick={() => setFilter('pending')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-        >
-          待备课
-        </button>
-        <button 
-          onClick={() => setFilter('completed')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-        >
-          已完成
-        </button>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          >
+            全部课时
+          </button>
+          <button 
+            onClick={() => setFilter('pending')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          >
+            待备课
+          </button>
+          <button 
+            onClick={() => setFilter('completed')}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+          >
+            已完成
+          </button>
+        </div>
+        
+        {filteredLessons.length > 0 && (
+          <div className="flex items-center gap-2">
+            {isBatchMode ? (
+              <>
+                <span className="text-sm text-gray-500 mr-2">已选 {selectedLessons.size} 项</span>
+                <button 
+                  onClick={selectAll}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  {selectedLessons.size === filteredLessons.length ? '取消全选' : '全选'}
+                </button>
+                <button 
+                  onClick={handleBatchComplete}
+                  disabled={selectedLessons.size === 0}
+                  className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  标记完成
+                </button>
+                <button 
+                  onClick={handleBatchDelete}
+                  disabled={selectedLessons.size === 0}
+                  className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  删除
+                </button>
+                <button 
+                  onClick={() => setIsBatchMode(false)}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ml-2"
+                >
+                  取消
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={() => setIsBatchMode(true)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors shadow-sm"
+              >
+                批量操作
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="space-y-4">
         {filteredLessons.map(lesson => (
-          <LessonCard 
-            key={lesson.id} 
-            lesson={lesson} 
-            course={course}
-            settings={settings}
-            onUpdate={onUpdateLesson} 
-            onDelete={() => onDeleteLesson(lesson.id)}
-          />
+          <div key={lesson.id} className="relative flex items-start gap-3">
+            {isBatchMode && (
+              <div className="pt-6 pl-2">
+                <input 
+                  type="checkbox" 
+                  checked={selectedLessons.has(lesson.id)}
+                  onChange={() => toggleSelection(lesson.id)}
+                  className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <LessonCard 
+                lesson={lesson} 
+                course={course}
+                settings={settings}
+                onUpdate={onUpdateLesson} 
+                onDelete={() => onDeleteLesson(lesson.id)}
+              />
+            </div>
+          </div>
         ))}
         {filteredLessons.length === 0 && (
           <div className="text-center py-24 text-gray-500 bg-gradient-to-b from-gray-50/50 to-white rounded-[2rem] border border-gray-200 border-dashed">

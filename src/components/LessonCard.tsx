@@ -1,11 +1,42 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles, Edit2, Eye, GripVertical } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles, Edit2, Eye, GripVertical, Bold, Italic, List, ListOrdered, Link as LinkIcon } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing, playTick, playSuccess } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
 import { generatePrepGoal } from '../utils/ai';
 import Markdown from 'react-markdown';
+
+const MarkdownToolbar = ({ textareaRef, value, onChange }: { textareaRef: React.RefObject<HTMLTextAreaElement>, value: string, onChange: (val: string) => void }) => {
+  const insertText = (e: React.MouseEvent, before: string, after: string = '') => {
+    e.preventDefault();
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    const newValue = value.substring(0, start) + before + selectedText + after + value.substring(end);
+    onChange(newValue);
+    
+    // Restore focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
+  return (
+    <div className="flex items-center gap-1 mb-2 border-b border-gray-100 pb-2">
+      <button onClick={(e) => insertText(e, '**', '**')} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="加粗"><Bold className="w-4 h-4" /></button>
+      <button onClick={(e) => insertText(e, '*', '*')} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="斜体"><Italic className="w-4 h-4" /></button>
+      <button onClick={(e) => insertText(e, '- ')} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="无序列表"><List className="w-4 h-4" /></button>
+      <button onClick={(e) => insertText(e, '1. ')} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="有序列表"><ListOrdered className="w-4 h-4" /></button>
+      <button onClick={(e) => insertText(e, '[', '](url)')} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="链接"><LinkIcon className="w-4 h-4" /></button>
+    </div>
+  );
+};
 
 interface LessonCardProps {
   key?: string | number;
@@ -21,6 +52,8 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
   const [showCelebration, setShowCelebration] = useState(false);
   const [isFullscreenFocus, setIsFullscreenFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prepGoalRef = useRef<HTMLTextAreaElement>(null);
+  const reflectionRef = useRef<HTMLTextAreaElement>(null);
   const { text: timeText, isUrgent } = formatTimeUntil(lesson.classTime, settings.reminderHours);
 
   const completedTasksCount = lesson.tasks.filter(t => t.completed).length;
@@ -565,7 +598,13 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                       </div>
                     </h4>
                     <div className="relative group">
+                      <MarkdownToolbar 
+                        textareaRef={prepGoalRef} 
+                        value={lesson.prepGoal || ''} 
+                        onChange={(val) => onUpdate({ ...lesson, prepGoal: val })} 
+                      />
                       <textarea
+                        ref={prepGoalRef}
                         value={lesson.prepGoal || ''}
                         onChange={handleGoalChange}
                         placeholder="输入本节课的教学目标、重难点等 (支持 Markdown)..."
@@ -595,10 +634,16 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
                       <span>备课清单</span>
                       <span className="text-xs text-gray-500 font-normal bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
                     </h4>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
+                      <div 
+                        className="bg-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out" 
+                        style={{ width: `${totalTasksCount > 0 ? (completedTasksCount/totalTasksCount)*100 : 0}%` }}
+                      ></div>
+                    </div>
                     <div className="space-y-2.5 mb-4">
                       {lesson.tasks.map((task, index) => (
                         <div 
@@ -817,7 +862,13 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                     教学反思
                   </h4>
                   <div className="relative group mb-4">
+                    <MarkdownToolbar 
+                      textareaRef={reflectionRef} 
+                      value={lesson.reflection || ''} 
+                      onChange={(val) => onUpdate({ ...lesson, reflection: val })} 
+                    />
                     <textarea
+                      ref={reflectionRef}
                       value={lesson.reflection || ''}
                       onChange={(e) => onUpdate({ ...lesson, reflection: e.target.value })}
                       placeholder="记录本节课的闪光点、不足与改进建议 (支持 Markdown)..."
