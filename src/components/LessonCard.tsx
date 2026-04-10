@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles, Edit2, Eye, GripVertical, Bold, Italic, List, ListOrdered, Link as LinkIcon } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Paperclip, ChevronDown, ChevronUp, AlertCircle, Play, CheckSquare, Square, Upload, Trash2, Plus, Target, Printer, Sparkles, Edit2, Eye, GripVertical, Bold, Italic, List, ListOrdered, Link as LinkIcon, Copy, X, BookOpen } from 'lucide-react';
 import { Lesson, Task, UserSettings, Attachment, Course } from '../types';
 import { formatTimeUntil, formatDate } from '../utils/dateUtils';
 import { playDing, playTick, playSuccess } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
-import { generatePrepGoal } from '../utils/ai';
+import { generatePrepGoal, generateReflection } from '../utils/ai';
 import Markdown from 'react-markdown';
 
 const MarkdownToolbar = ({ textareaRef, value, onChange }: { textareaRef: React.RefObject<HTMLTextAreaElement>, value: string, onChange: (val: string) => void }) => {
@@ -45,15 +45,18 @@ interface LessonCardProps {
   settings: UserSettings;
   onUpdate: (lesson: Lesson) => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
+  viewMode?: 'list' | 'kanban';
 }
 
-export default function LessonCard({ lesson, course, settings, onUpdate, onDelete }: LessonCardProps) {
+export default function LessonCard({ lesson, course, settings, onUpdate, onDelete, onDuplicate, viewMode = 'list' }: LessonCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isFullscreenFocus, setIsFullscreenFocus] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prepGoalRef = useRef<HTMLTextAreaElement>(null);
   const reflectionRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const { text: timeText, isUrgent } = formatTimeUntil(lesson.classTime, settings.reminderHours);
 
   const completedTasksCount = lesson.tasks.filter(t => t.completed).length;
@@ -279,6 +282,28 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
     }
   };
 
+  const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+
+  const handleAIGenerateReflection = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!course) {
+      alert('无法获取课程信息，请确保该课时已关联课程。');
+      return;
+    }
+    setIsGeneratingReflection(true);
+    try {
+      const reflection = await generateReflection(course.name, lesson.title, course.grade, lesson.prepGoal || '');
+      onUpdate({
+        ...lesson,
+        reflection
+      });
+    } catch (error) {
+      alert('AI 生成失败，请稍后重试。');
+    } finally {
+      setIsGeneratingReflection(false);
+    }
+  };
+
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -310,6 +335,11 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
           
           <h2>教学目标</h2>
           <div class="content-box">${lesson.prepGoal || '未填写'}</div>
+          
+          ${lesson.content ? `
+            <h2>教案正文</h2>
+            <div class="content-box">${lesson.content}</div>
+          ` : ''}
           
           <h2>备课清单</h2>
           <ul class="task-list">
@@ -471,70 +501,83 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
       </AnimatePresence>
 
       <div 
-        className="p-5 flex items-center cursor-pointer select-none relative z-20"
+        className={`p-5 flex ${viewMode === 'kanban' ? 'flex-col items-start gap-4' : 'items-center'} cursor-pointer select-none relative z-20`}
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Big Checkmark */}
-        <div 
-          className="mr-5 flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95 relative"
-          onClick={handleMainCheck}
-        >
-          {lesson.status === 'completed' ? (
-            <CheckCircle2 className="w-12 h-12 text-green-500 drop-shadow-sm" />
-          ) : (
-            <Circle className={`w-10 h-10 ${allTasksCompleted ? 'text-blue-500 hover:text-green-500' : 'text-gray-300 hover:text-gray-400'}`} />
-          )}
-        </div>
+        <div className={`flex items-center ${viewMode === 'kanban' ? 'w-full' : 'flex-1 min-w-0'}`}>
+          {/* Big Checkmark */}
+          <div 
+            className={`${viewMode === 'kanban' ? 'mr-3' : 'mr-5'} flex-shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95 relative`}
+            onClick={handleMainCheck}
+          >
+            {lesson.status === 'completed' ? (
+              <CheckCircle2 className={`${viewMode === 'kanban' ? 'w-8 h-8' : 'w-12 h-12'} text-green-500 drop-shadow-sm`} />
+            ) : (
+              <Circle className={`${viewMode === 'kanban' ? 'w-8 h-8' : 'w-10 h-10'} ${allTasksCompleted ? 'text-blue-500 hover:text-green-500' : 'text-gray-300 hover:text-gray-400'}`} />
+            )}
+          </div>
 
-        {/* Core Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className={`text-xl font-bold truncate tracking-tight ${lesson.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-blue-600 transition-colors'}`}>
-              {lesson.title}
-            </h3>
-            <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${getStatusColor()}`}>
-              {getStatusText()}
-            </span>
-            {lesson.lessonType && (
-              <span className="text-xs px-2.5 py-1 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 font-medium">
-                {lesson.lessonType}
+          {/* Core Info */}
+          <div className="flex-1 min-w-0">
+            <div className={`flex ${viewMode === 'kanban' ? 'flex-wrap' : 'items-center'} gap-2 mb-1.5`}>
+              <h3 className={`${viewMode === 'kanban' ? 'text-lg' : 'text-xl'} font-bold truncate tracking-tight ${lesson.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900 group-hover:text-blue-600 transition-colors'}`}>
+                {lesson.title}
+              </h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-md border font-medium ${getStatusColor()}`}>
+                {getStatusText()}
               </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-3 text-sm text-gray-500">
-            <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 font-medium">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span>{formatDate(lesson.classTime)}</span>
+              {lesson.lessonType && (
+                <span className="text-[10px] px-2 py-0.5 rounded-md border border-purple-200 bg-purple-50 text-purple-700 font-medium">
+                  {lesson.lessonType}
+                </span>
+              )}
+              {lesson.tags && lesson.tags.map(tag => (
+                <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium">
+                  {tag}
+                </span>
+              ))}
             </div>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors ${allTasksCompleted ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100'}`}>
-              <CheckSquare className={`w-4 h-4 ${allTasksCompleted ? 'text-green-500' : 'text-gray-400'}`} />
-              <span>{completedTasksCount}/{totalTasksCount} 项</span>
+            
+            <div className={`flex flex-wrap items-center gap-2 text-xs text-gray-500`}>
+              <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 font-medium">
+                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                <span>{formatDate(lesson.classTime)}</span>
+              </div>
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-md border font-medium transition-colors ${allTasksCompleted ? 'bg-green-50 border-green-100 text-green-700' : 'bg-gray-50 border-gray-100'}`}>
+                <CheckSquare className={`w-3.5 h-3.5 ${allTasksCompleted ? 'text-green-500' : 'text-gray-400'}`} />
+                <span>{completedTasksCount}/{totalTasksCount}</span>
+              </div>
+              {lesson.attachments.length > 0 && (
+                <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 font-medium">
+                  <Paperclip className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{lesson.attachments.length}</span>
+                </div>
+              )}
+              {(lesson.prepTime || 0) > 0 && !isFocusMode && (
+                <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-md border border-orange-100 text-orange-700 font-medium">
+                  <Target className="w-3.5 h-3.5 text-orange-500" />
+                  <span>{lesson.prepTime}m</span>
+                </div>
+              )}
+              {isFocusMode && (
+                <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md border border-red-100 text-red-700 font-medium animate-pulse">
+                  <Target className="w-3.5 h-3.5 text-red-500" />
+                  <span>{formatFocusTime(focusTime)}</span>
+                </div>
+              )}
+              {isUrgent && lesson.status !== 'completed' && (
+                <div className="flex items-center gap-1 text-red-500 font-medium bg-red-50 px-2 py-1 rounded-md border border-red-100">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{timeText}</span>
+                </div>
+              )}
             </div>
-            {lesson.attachments.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 font-medium">
-                <Paperclip className="w-4 h-4 text-gray-400" />
-                <span>{lesson.attachments.length} 个附件</span>
-              </div>
-            )}
-            {(lesson.prepTime || 0) > 0 && !isFocusMode && (
-              <div className="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 text-orange-700 font-medium">
-                <Target className="w-4 h-4 text-orange-500" />
-                <span>已专注 {lesson.prepTime} 分钟</span>
-              </div>
-            )}
-            {isFocusMode && (
-              <div className="flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 text-red-700 font-medium animate-pulse">
-                <Target className="w-4 h-4 text-red-500" />
-                <span>专注中 {formatFocusTime(focusTime)}</span>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Right side info */}
-        <div className="flex flex-col items-end ml-4 space-y-2">
-          {lesson.status !== 'completed' && (
+        {/* Right side info / Action Buttons */}
+        <div className={`flex ${viewMode === 'kanban' ? 'w-full justify-between items-center border-t border-gray-100 pt-3' : 'flex-col items-end ml-4 space-y-2'}`}>
+          {viewMode !== 'kanban' && lesson.status !== 'completed' && (
             <div className={`text-sm flex items-center gap-1 ${isUrgent ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
               {isUrgent && <AlertCircle className="w-4 h-4" />}
               {timeText}
@@ -542,14 +585,39 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
           )}
           <div className="flex items-center gap-2 text-gray-400">
             <button 
+              onClick={(e) => { e.stopPropagation(); toggleFocusMode(); }}
+              className={`p-1.5 rounded-lg transition-all ${isFocusMode ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'hover:text-orange-500 hover:bg-orange-50'}`}
+              title={isFocusMode ? "结束专注" : "开始专注"}
+            >
+              <Play className={`w-4 h-4 ${isFocusMode ? 'fill-current' : ''}`} />
+            </button>
+            <button 
               onClick={(e) => { e.stopPropagation(); handlePrint(); }} 
               className="p-1.5 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
               title="打印教案"
             >
               <Printer className="w-4 h-4" />
             </button>
-            <div className="p-1.5">
-              {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            {onDuplicate && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                className="p-1.5 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="复制课时"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-1.5 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="删除课时"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <div className={`p-1.5 rounded-full transition-transform duration-300 ${expanded ? 'bg-gray-100 rotate-180' : 'bg-gray-50 group-hover:bg-blue-50 group-hover:text-blue-600'}`}>
+              <ChevronDown className="w-5 h-5" />
             </div>
           </div>
         </div>
@@ -565,17 +633,50 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
             className="overflow-hidden border-t border-gray-100"
           >
             <div className="p-6 bg-gray-50/80 rounded-b-3xl">
-              <div className="flex items-center gap-4 mb-6">
-                <label className="text-sm font-semibold text-gray-700">课型：</label>
-                <select
-                  value={lesson.lessonType || '新授课'}
-                  onChange={(e) => onUpdate({ ...lesson, lessonType: e.target.value as any })}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500"
-                >
-                  {['新授课', '复习课', '讲评课', '实验课', '公开课', '考试', '活动', '其他'].map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+              <div className="flex flex-wrap items-center gap-6 mb-6">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-semibold text-gray-700">课型：</label>
+                  <select
+                    value={lesson.lessonType || '新授课'}
+                    onChange={(e) => onUpdate({ ...lesson, lessonType: e.target.value as any })}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    {['新授课', '复习课', '讲评课', '实验课', '公开课', '考试', '活动', '其他'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 flex-1">
+                  <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">标签：</label>
+                  <div className="flex flex-wrap items-center gap-2 flex-1">
+                    {lesson.tags?.map(tag => (
+                      <span key={tag} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700">
+                        {tag}
+                        <button 
+                          onClick={() => onUpdate({ ...lesson, tags: lesson.tags?.filter(t => t !== tag) })}
+                          className="hover:text-indigo-900 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input 
+                      type="text"
+                      placeholder="输入标签按回车..."
+                      className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:ring-2 focus:ring-indigo-500 bg-white w-32"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          e.preventDefault();
+                          const newTag = e.currentTarget.value.trim();
+                          if (!lesson.tags?.includes(newTag)) {
+                            onUpdate({ ...lesson, tags: [...(lesson.tags || []), newTag] });
+                          }
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Checklist & Goal */}
@@ -635,14 +736,53 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
 
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
-                      <span>备课清单</span>
-                      <span className="text-xs text-gray-500 font-normal bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
+                      <div className="flex items-center gap-2">
+                        <span>备课清单</span>
+                        <span className="text-xs text-gray-500 font-normal bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">{totalTasksCount > 0 ? Math.round((completedTasksCount/totalTasksCount)*100) : 0}%</span>
+                      </div>
+                      <button 
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!course) {
+                            alert('无法获取课程信息，请确保该课时已关联课程。');
+                            return;
+                          }
+                          setIsGenerating(true);
+                          try {
+                            const { generateTasks } = await import('../utils/ai');
+                            const taskTitles = await generateTasks(course.name, lesson.title, course.grade, lesson.prepGoal || '');
+                            if (taskTitles && taskTitles.length > 0) {
+                              const newTasks = taskTitles.map((title, index) => ({
+                                id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+                                title,
+                                completed: false
+                              }));
+                              onUpdate({
+                                ...lesson,
+                                tasks: [...lesson.tasks, ...newTasks],
+                                status: lesson.status === 'completed' ? 'in_progress' : lesson.status
+                              });
+                            }
+                          } catch (error) {
+                            alert('AI 生成失败，请稍后重试。');
+                          } finally {
+                            setIsGenerating(false);
+                          }
+                        }}
+                        disabled={isGenerating}
+                        className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isGenerating ? '生成中...' : 'AI 辅助生成'}
+                      </button>
                     </h4>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4 overflow-hidden">
-                      <div 
-                        className="bg-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out" 
-                        style={{ width: `${totalTasksCount > 0 ? (completedTasksCount/totalTasksCount)*100 : 0}%` }}
-                      ></div>
+                      <motion.div 
+                        className="bg-blue-500 h-1.5 rounded-full" 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${totalTasksCount > 0 ? (completedTasksCount/totalTasksCount)*100 : 0}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      ></motion.div>
                     </div>
                     <div className="space-y-2.5 mb-4">
                       {lesson.tasks.map((task, index) => (
@@ -854,12 +994,90 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                 </div>
               </div>
 
+              {/* Lesson Plan Content */}
+              <div className="mt-8 pt-6 border-t border-gray-200/60">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-blue-500" />
+                    教案正文
+                  </div>
+                  <button 
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!course) {
+                        alert('无法获取课程信息，请确保该课时已关联课程。');
+                        return;
+                      }
+                      setIsGenerating(true);
+                      try {
+                        const { generateLessonPlan } = await import('../utils/ai');
+                        const content = await generateLessonPlan(course.name, lesson.title, course.grade, lesson.prepGoal || '');
+                        onUpdate({ ...lesson, content });
+                      } catch (error) {
+                        alert('AI 生成失败，请稍后重试。');
+                      } finally {
+                        setIsGenerating(false);
+                      }
+                    }}
+                    disabled={isGenerating}
+                    className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {isGenerating ? '生成中...' : 'AI 生成教案'}
+                  </button>
+                </h4>
+                <div className="relative group mb-4">
+                  <MarkdownToolbar 
+                    textareaRef={contentRef} 
+                    value={lesson.content || ''} 
+                    onChange={(val) => onUpdate({ ...lesson, content: val })} 
+                  />
+                  <textarea
+                    ref={contentRef}
+                    value={lesson.content || ''}
+                    onChange={(e) => onUpdate({ ...lesson, content: e.target.value })}
+                    placeholder="输入详细的教案正文 (支持 Markdown)..."
+                    className="w-full text-sm px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-64"
+                  />
+                  {lesson.content && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const el = document.getElementById(`markdown-preview-content-${lesson.id}`);
+                          if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                        }}
+                        className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 shadow-sm"
+                        title="切换预览"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {lesson.content && (
+                  <div id={`markdown-preview-content-${lesson.id}`} className="hidden mt-2 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm prose prose-sm max-w-none">
+                    <Markdown>{lesson.content}</Markdown>
+                  </div>
+                )}
+              </div>
+
               {/* Post-class reflection if completed */}
               {lesson.status === 'completed' && new Date(lesson.classTime) < new Date() && (
                 <div className="mt-8 pt-6 border-t border-gray-200/60">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    教学反思
+                  <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      教学反思
+                    </div>
+                    <button 
+                      onClick={handleAIGenerateReflection}
+                      disabled={isGeneratingReflection}
+                      className="flex items-center gap-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {isGeneratingReflection ? '生成中...' : 'AI 辅助反思'}
+                    </button>
                   </h4>
                   <div className="relative group mb-4">
                     <MarkdownToolbar 
@@ -915,21 +1133,35 @@ export default function LessonCard({ lesson, course, settings, onUpdate, onDelet
                 </div>
               )}
 
-              {/* Delete Lesson Button */}
-              {onDelete && (
-                <div className="mt-8 pt-6 border-t border-gray-200/60 flex justify-end">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm('确定要删除这个课时吗？')) {
-                        onDelete();
-                      }
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    删除课时
-                  </button>
+              {/* Actions */}
+              {(onDelete || onDuplicate) && (
+                <div className="mt-8 pt-6 border-t border-gray-200/60 flex justify-end gap-3">
+                  {onDuplicate && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicate();
+                      }}
+                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
+                    >
+                      <Copy className="w-4 h-4" />
+                      复用课时
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('确定要删除这个课时吗？')) {
+                          onDelete();
+                        }
+                      }}
+                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      删除课时
+                    </button>
+                  )}
                 </div>
               )}
             </div>

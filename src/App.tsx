@@ -18,6 +18,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [lessons, setLessons] = useState<Lesson[]>(mockLessons);
@@ -149,11 +150,11 @@ export default function App() {
   };
 
   const handleUpdateLesson = (updatedLesson: Lesson) => {
-    setLessons(lessons.map(l => l.id === updatedLesson.id ? updatedLesson : l));
+    setLessons(prev => prev.map(l => l.id === updatedLesson.id ? updatedLesson : l));
   };
 
   const handleDeleteLesson = (id: string) => {
-    setLessons(lessons.filter(l => l.id !== id));
+    setLessons(prev => prev.filter(l => l.id !== id));
   };
 
   const handleAddLesson = (newLesson: Omit<Lesson, 'id'>) => {
@@ -161,11 +162,11 @@ export default function App() {
       ...newLesson,
       id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
-    setLessons([...lessons, lesson]);
+    setLessons(prev => [...prev, lesson]);
   };
 
   const handleAddMultipleLessons = (newLessons: Lesson[]) => {
-    setLessons([...lessons, ...newLessons]);
+    setLessons(prev => [...prev, ...newLessons]);
   };
 
   const handleDuplicateLesson = (lesson: Lesson) => {
@@ -211,6 +212,8 @@ export default function App() {
         settings={settings}
         onOpenSearch={() => setIsSearchOpen(true)}
         onQuickAdd={() => setIsQuickAddOpen(true)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       <main className="flex-1 overflow-y-auto p-8 relative">
         {activeTab === 'dashboard' && <Dashboard courses={courses} lessons={lessons} settings={settings} onSelectCourse={handleSelectCourse} onUpdateSettings={setSettings} />}
@@ -222,8 +225,10 @@ export default function App() {
             settings={settings}
             onUpdateLesson={handleUpdateLesson}
             onAddLesson={handleAddLesson}
+            onAddMultipleLessons={handleAddMultipleLessons}
             onDeleteLesson={handleDeleteLesson}
             onUpdateCourse={handleUpdateCourse}
+            onDuplicateLesson={handleDuplicateLesson}
           />
         )}
         {activeTab === 'calendar' && <CalendarView lessons={lessons} courses={courses} settings={settings} onAddLesson={handleAddLesson} onUpdateLesson={handleUpdateLesson} onDeleteLesson={handleDeleteLesson} />}

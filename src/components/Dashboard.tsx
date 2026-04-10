@@ -128,12 +128,12 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse, 
       </div>
 
       {/* Urgent Tasks */}
-      {urgentLessons.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            紧急待办
-          </h2>
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          紧急待办
+        </h2>
+        {urgentLessons.length > 0 ? (
           <div className="bg-red-50/50 border border-red-100 rounded-2xl p-5">
             <div className="space-y-3">
               {urgentLessons.map(lesson => {
@@ -155,16 +155,21 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse, 
               })}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-gray-50/50 border border-gray-100 border-dashed rounded-2xl p-8 text-center">
+            <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3 opacity-50" />
+            <p className="text-gray-500 text-sm">太棒了！当前没有紧急待办的课时。</p>
+          </div>
+        )}
+      </div>
 
       {/* Upcoming Lessons */}
-      {upcomingLessons.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-500" />
-            未来7天待备课
-          </h2>
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-blue-500" />
+          未来7天待备课
+        </h2>
+        {upcomingLessons.length > 0 ? (
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <div className="space-y-3">
               {upcomingLessons.map(lesson => {
@@ -188,8 +193,13 @@ export default function Dashboard({ courses, lessons, settings, onSelectCourse, 
               })}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-gray-50/50 border border-gray-100 border-dashed rounded-2xl p-8 text-center">
+            <CalendarIcon className="w-10 h-10 text-blue-300 mx-auto mb-3 opacity-50" />
+            <p className="text-gray-500 text-sm">未来7天没有需要准备的课时，好好休息吧！</p>
+          </div>
+        )}
+      </div>
 
       {/* Course Progress Overview */}
       <div className="mb-8">

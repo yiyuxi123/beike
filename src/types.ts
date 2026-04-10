@@ -34,7 +34,9 @@ export type Lesson = {
   attachments: Attachment[];
   prepTime: number; // minutes
   prepGoal?: string; // 备课目标
+  content?: string; // 教案正文
   reflection?: string; // 教学反思
+  tags?: string[]; // 自定义标签
 };
 
 export type TimetableSlot = {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Course, Lesson, UserSettings } from '../types';
 import LessonCard from './LessonCard';
-import { BookOpen, Plus, X, Clock, Archive } from 'lucide-react';
+import { BookOpen, Plus, X, Clock, Archive, Calendar as CalendarIcon, LayoutList, LayoutGrid, Sparkles } from 'lucide-react';
 
 interface CourseDetailProps {
   course: Course;
@@ -9,12 +9,63 @@ interface CourseDetailProps {
   settings: UserSettings;
   onUpdateLesson: (lesson: Lesson) => void;
   onAddLesson: (lesson: Omit<Lesson, 'id'>) => void;
+  onAddMultipleLessons?: (lessons: Lesson[]) => void;
   onDeleteLesson: (id: string) => void;
   onUpdateCourse: (course: Course) => void;
+  onDuplicateLesson?: (lesson: Lesson) => void;
 }
 
-export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson, onDeleteLesson, onUpdateCourse }: CourseDetailProps) {
+export default function CourseDetail({ course, lessons, settings, onUpdateLesson, onAddLesson, onAddMultipleLessons, onDeleteLesson, onUpdateCourse, onDuplicateLesson }: CourseDetailProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAutoScheduleModalOpen, setIsAutoScheduleModalOpen] = useState(false);
+  
+  // Auto Schedule State
+  const [autoStartDate, setAutoStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [autoEndDate, setAutoEndDate] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [autoWeekdays, setAutoWeekdays] = useState<number[]>([1, 3, 5]); // Mon, Wed, Fri
+  const [autoTime, setAutoTime] = useState(settings.timetableSlots?.[0]?.startTime || '08:00');
+  const [autoPrefix, setAutoPrefix] = useState('第{n}课时');
+
+  const handleAutoSchedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onAddMultipleLessons) return;
+
+    const start = new Date(autoStartDate);
+    const end = new Date(autoEndDate);
+    const newLessons: Lesson[] = [];
+    let lessonCount = 1;
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      if (autoWeekdays.includes(d.getDay())) {
+        const classTime = new Date(d);
+        const [hours, minutes] = autoTime.split(':');
+        classTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        newLessons.push({
+          id: `l_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          courseId: course.id,
+          title: autoPrefix.replace('{n}', lessonCount.toString()),
+          classTime: classTime.toISOString(),
+          status: 'not_started',
+          tasks: settings.defaultTasks.map(t => ({ title: t, id: `t_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, completed: false })),
+          attachments: [],
+          lessonType: '新授课',
+          prepTime: 0
+        });
+        lessonCount++;
+      }
+    }
+
+    if (newLessons.length > 0) {
+      if (window.confirm(`将为您自动生成 ${newLessons.length} 个课时，是否继续？`)) {
+        onAddMultipleLessons(newLessons);
+        setIsAutoScheduleModalOpen(false);
+      }
+    } else {
+      alert('在选定的日期范围内没有符合条件的上课日期。');
+    }
+  };
+
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newTime, setNewTime] = useState(settings.timetableSlots?.[0]?.startTime || '08:00');
@@ -23,6 +74,7 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
   const [isBatchMode, setIsBatchMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
   const completedCount = lessons.filter(l => l.status === 'completed').length;
   const totalCount = lessons.length;
@@ -124,6 +176,10 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
         md += `### 教学目标\n\n${lesson.prepGoal}\n\n`;
       }
       
+      if (lesson.content) {
+        md += `### 教案正文\n\n${lesson.content}\n\n`;
+      }
+      
       if (lesson.tasks.length > 0) {
         md += `### 备课清单\n\n`;
         lesson.tasks.forEach(task => {
@@ -144,6 +200,40 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
     link.setAttribute('download', `${course.name}备课计划.md`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportICS = () => {
+    let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Teacher Lesson Planner//CN\nCALSCALE:GREGORIAN\n";
+    
+    sortedLessons.forEach(lesson => {
+      const startDate = new Date(lesson.classTime);
+      const endDate = new Date(startDate.getTime() + 45 * 60000); // Assume 45 mins per lesson
+      
+      const formatICSDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      };
+
+      ics += "BEGIN:VEVENT\n";
+      ics += `UID:${lesson.id}@lessonplanner\n`;
+      ics += `DTSTAMP:${formatICSDate(new Date())}\n`;
+      ics += `DTSTART:${formatICSDate(startDate)}\n`;
+      ics += `DTEND:${formatICSDate(endDate)}\n`;
+      ics += `SUMMARY:${course.name} - ${lesson.title}\n`;
+      ics += `DESCRIPTION:课型: ${lesson.lessonType || '新授课'}\\n状态: ${lesson.status === 'completed' ? '已完成' : '未完成'}\n`;
+      ics += "END:VEVENT\n";
+    });
+    
+    ics += "END:VCALENDAR";
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${course.name}课程日历.ics`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -181,11 +271,70 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
               {course.isArchived ? '取消归档' : '归档'}
             </button>
             <button 
+              onClick={handleExportICS}
+              className="flex items-center gap-2 px-4 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              title="导出日历文件 (.ics)"
+            >
+              导出日历
+            </button>
+            <button 
               onClick={handleExportCourse}
               className="flex items-center gap-2 px-4 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
               title="导出课程计划 (Markdown)"
             >
               导出计划
+            </button>
+            <button 
+              onClick={() => setIsAutoScheduleModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-white text-blue-600 border border-blue-200 rounded-xl text-sm font-semibold hover:bg-blue-50 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              title="根据排课规律自动生成多个课时"
+            >
+              <CalendarIcon className="w-4 h-4" />
+              批量排课
+            </button>
+            <button 
+              onClick={async () => {
+                if (window.confirm('将使用 AI 根据课程名称和年级自动生成教学大纲（约10个课时），这可能需要几秒钟。是否继续？')) {
+                  try {
+                    const { generateSyllabus } = await import('../utils/ai');
+                    const syllabus = await generateSyllabus(course.name, course.grade, 10);
+                    if (syllabus && syllabus.length > 0) {
+                      const newLessons = syllabus.map((item, index) => {
+                        const date = new Date();
+                        date.setDate(date.getDate() + index);
+                        return {
+                          id: Date.now().toString() + index,
+                          courseId: course.id,
+                          title: item.title,
+                          classTime: date.toISOString(),
+                          status: 'not_started' as const,
+                          tasks: [
+                            { id: Date.now().toString() + 't1' + index, title: '准备教学课件', completed: false },
+                            { id: Date.now().toString() + 't2' + index, title: '设计课堂互动', completed: false }
+                          ],
+                          prepGoal: item.goal,
+                          attachments: [],
+                          prepTime: 0,
+                          lessonType: '新授课' as const
+                        };
+                      });
+                      if (onAddMultipleLessons) {
+                        onAddMultipleLessons(newLessons);
+                        alert(`成功生成了 ${newLessons.length} 个课时！`);
+                      }
+                    } else {
+                      alert('生成失败，请重试。');
+                    }
+                  } catch (e) {
+                    alert('生成出错，请检查网络或 API Key 设置。');
+                  }
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-sm font-semibold hover:bg-purple-100 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              title="使用 AI 自动生成课程大纲"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI 生成大纲
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
@@ -217,25 +366,46 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
 
       {/* Lessons List */}
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-          >
-            全部课时
-          </button>
-          <button 
-            onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-          >
-            待备课
-          </button>
-          <button 
-            onClick={() => setFilter('completed')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-          >
-            已完成
-          </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+            >
+              全部课时
+            </button>
+            <button 
+              onClick={() => setFilter('pending')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+            >
+              待备课
+            </button>
+            <button 
+              onClick={() => setFilter('completed')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+            >
+              已完成
+            </button>
+          </div>
+          
+          <div className="h-6 w-px bg-gray-200"></div>
+          
+          <div className="flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              title="列表视图"
+            >
+              <LayoutList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'kanban' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              title="看板视图"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         
         {filteredLessons.length > 0 && (
@@ -281,42 +451,182 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
           </div>
         )}
       </div>
-      <div className="space-y-4">
-        {filteredLessons.map(lesson => (
-          <div key={lesson.id} className="relative flex items-start gap-3">
-            {isBatchMode && (
-              <div className="pt-6 pl-2">
-                <input 
-                  type="checkbox" 
-                  checked={selectedLessons.has(lesson.id)}
-                  onChange={() => toggleSelection(lesson.id)}
-                  className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+      {viewMode === 'list' ? (
+        <div className="space-y-4">
+          {filteredLessons.map(lesson => (
+            <div key={lesson.id} className="relative flex items-start gap-3">
+              {isBatchMode && (
+                <div className="pt-6 pl-2">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedLessons.has(lesson.id)}
+                    onChange={() => toggleSelection(lesson.id)}
+                    className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <LessonCard 
+                  lesson={lesson} 
+                  course={course}
+                  settings={settings}
+                  onUpdate={onUpdateLesson} 
+                  onDelete={() => onDeleteLesson(lesson.id)}
+                  onDuplicate={onDuplicateLesson ? () => onDuplicateLesson(lesson) : undefined}
                 />
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <LessonCard 
-                lesson={lesson} 
-                course={course}
-                settings={settings}
-                onUpdate={onUpdateLesson} 
-                onDelete={() => onDeleteLesson(lesson.id)}
-              />
+            </div>
+          ))}
+          {filteredLessons.length === 0 && (
+            <div className="text-center py-24 text-gray-500 bg-gradient-to-b from-gray-50/50 to-white rounded-[2rem] border border-gray-200 border-dashed">
+              <div className="w-20 h-20 bg-white shadow-sm rounded-3xl flex items-center justify-center mx-auto mb-5 transform -rotate-3">
+                <BookOpen className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">暂无课时</h3>
+              <p className="text-gray-500">
+                {filter === 'all' ? '点击右上角“添加课时”开始备课' : '没有符合当前筛选条件的课时'}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex gap-6 overflow-x-auto pb-4">
+          {/* Not Started Column */}
+          <div 
+            className="flex-1 min-w-[320px] bg-gray-50/50 rounded-3xl p-4 border border-gray-100 transition-colors"
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-gray-100'); }}
+            onDragLeave={(e) => { e.currentTarget.classList.remove('bg-gray-100'); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('bg-gray-100');
+              const lessonId = e.dataTransfer.getData('kanbanLessonId');
+              if (lessonId) {
+                const lesson = lessons.find(l => l.id === lessonId);
+                if (lesson && lesson.status !== 'not_started') {
+                  onUpdateLesson({ ...lesson, status: 'not_started' });
+                }
+              }
+            }}
+          >
+            <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2 px-2">
+              <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+              未开始
+              <span className="text-xs font-normal text-gray-400 ml-auto">{filteredLessons.filter(l => l.status === 'not_started').length}</span>
+            </h3>
+            <div className="space-y-4">
+              {filteredLessons.filter(l => l.status === 'not_started').map(lesson => (
+                <div 
+                  key={lesson.id} 
+                  draggable 
+                  onDragStart={(e) => { e.dataTransfer.setData('kanbanLessonId', lesson.id); e.currentTarget.classList.add('opacity-50'); }}
+                  onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50'); }}
+                  className="cursor-grab active:cursor-grabbing"
+                >
+                  <LessonCard 
+                    lesson={lesson} 
+                    course={course}
+                    settings={settings}
+                    onUpdate={onUpdateLesson} 
+                    onDelete={() => onDeleteLesson(lesson.id)}
+                    onDuplicate={onDuplicateLesson ? () => onDuplicateLesson(lesson) : undefined}
+                    viewMode="kanban"
+                  />
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-        {filteredLessons.length === 0 && (
-          <div className="text-center py-24 text-gray-500 bg-gradient-to-b from-gray-50/50 to-white rounded-[2rem] border border-gray-200 border-dashed">
-            <div className="w-20 h-20 bg-white shadow-sm rounded-3xl flex items-center justify-center mx-auto mb-5 transform -rotate-3">
-              <BookOpen className="w-10 h-10 text-gray-400" />
+          
+          {/* In Progress Column */}
+          <div 
+            className="flex-1 min-w-[320px] bg-blue-50/30 rounded-3xl p-4 border border-blue-100/50 transition-colors"
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-blue-100/50'); }}
+            onDragLeave={(e) => { e.currentTarget.classList.remove('bg-blue-100/50'); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('bg-blue-100/50');
+              const lessonId = e.dataTransfer.getData('kanbanLessonId');
+              if (lessonId) {
+                const lesson = lessons.find(l => l.id === lessonId);
+                if (lesson && lesson.status !== 'in_progress') {
+                  onUpdateLesson({ ...lesson, status: 'in_progress' });
+                }
+              }
+            }}
+          >
+            <h3 className="font-semibold text-blue-700 mb-4 flex items-center gap-2 px-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              备课中
+              <span className="text-xs font-normal text-blue-400 ml-auto">{filteredLessons.filter(l => l.status === 'in_progress' || l.status === 'needs_revision').length}</span>
+            </h3>
+            <div className="space-y-4">
+              {filteredLessons.filter(l => l.status === 'in_progress' || l.status === 'needs_revision').map(lesson => (
+                <div 
+                  key={lesson.id} 
+                  draggable 
+                  onDragStart={(e) => { e.dataTransfer.setData('kanbanLessonId', lesson.id); e.currentTarget.classList.add('opacity-50'); }}
+                  onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50'); }}
+                  className="cursor-grab active:cursor-grabbing"
+                >
+                  <LessonCard 
+                    lesson={lesson} 
+                    course={course}
+                    settings={settings}
+                    onUpdate={onUpdateLesson} 
+                    onDelete={() => onDeleteLesson(lesson.id)}
+                    onDuplicate={onDuplicateLesson ? () => onDuplicateLesson(lesson) : undefined}
+                    viewMode="kanban"
+                  />
+                </div>
+              ))}
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">暂无课时</h3>
-            <p className="text-gray-500">
-              {filter === 'all' ? '点击右上角“添加课时”开始备课' : '没有符合当前筛选条件的课时'}
-            </p>
           </div>
-        )}
-      </div>
+
+          {/* Completed Column */}
+          <div 
+            className="flex-1 min-w-[320px] bg-green-50/30 rounded-3xl p-4 border border-green-100/50 transition-colors"
+            onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-green-100/50'); }}
+            onDragLeave={(e) => { e.currentTarget.classList.remove('bg-green-100/50'); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('bg-green-100/50');
+              const lessonId = e.dataTransfer.getData('kanbanLessonId');
+              if (lessonId) {
+                const lesson = lessons.find(l => l.id === lessonId);
+                if (lesson && lesson.status !== 'completed') {
+                  onUpdateLesson({ ...lesson, status: 'completed' });
+                }
+              }
+            }}
+          >
+            <h3 className="font-semibold text-green-700 mb-4 flex items-center gap-2 px-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              已完成
+              <span className="text-xs font-normal text-green-400 ml-auto">{filteredLessons.filter(l => l.status === 'completed').length}</span>
+            </h3>
+            <div className="space-y-4">
+              {filteredLessons.filter(l => l.status === 'completed').map(lesson => (
+                <div 
+                  key={lesson.id} 
+                  draggable 
+                  onDragStart={(e) => { e.dataTransfer.setData('kanbanLessonId', lesson.id); e.currentTarget.classList.add('opacity-50'); }}
+                  onDragEnd={(e) => { e.currentTarget.classList.remove('opacity-50'); }}
+                  className="cursor-grab active:cursor-grabbing"
+                >
+                  <LessonCard 
+                    lesson={lesson} 
+                    course={course}
+                    settings={settings}
+                    onUpdate={onUpdateLesson} 
+                    onDelete={() => onDeleteLesson(lesson.id)}
+                    onDuplicate={onDuplicateLesson ? () => onDuplicateLesson(lesson) : undefined}
+                    viewMode="kanban"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Lesson Modal */}
       {isModalOpen && (
@@ -427,6 +737,110 @@ export default function CourseDetail({ course, lessons, settings, onUpdateLesson
                   className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   确定添加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Auto Schedule Modal */}
+      {isAutoScheduleModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">批量自动排课</h2>
+              <button onClick={() => setIsAutoScheduleModalOpen(false)} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAutoSchedule} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">开始日期</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={autoStartDate}
+                    onChange={e => setAutoStartDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">结束日期</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={autoEndDate}
+                    onChange={e => setAutoEndDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">上课规律 (星期)</label>
+                <div className="flex flex-wrap gap-2">
+                  {['日', '一', '二', '三', '四', '五', '六'].map((day, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        if (autoWeekdays.includes(index)) {
+                          setAutoWeekdays(autoWeekdays.filter(d => d !== index));
+                        } else {
+                          setAutoWeekdays([...autoWeekdays, index]);
+                        }
+                      }}
+                      className={`w-10 h-10 rounded-full text-sm font-medium transition-all ${
+                        autoWeekdays.includes(index)
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">上课时间</label>
+                <input 
+                  type="time" 
+                  required
+                  value={autoTime}
+                  onChange={e => setAutoTime(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">课时标题模板</label>
+                <input 
+                  type="text" 
+                  required
+                  value={autoPrefix}
+                  onChange={e => setAutoPrefix(e.target.value)}
+                  placeholder="例如：第{n}课时"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">使用 {"{n}"} 代表课时序号，例如 "第{"{n}"}课时" 会生成 "第1课时", "第2课时" 等。</p>
+              </div>
+
+              <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAutoScheduleModalOpen(false)}
+                  className="px-6 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-sm font-semibold transition-all"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit"
+                  disabled={autoWeekdays.length === 0}
+                  className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-semibold transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  生成课时
                 </button>
               </div>
             </form>
